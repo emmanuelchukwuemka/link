@@ -1,0 +1,358 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// accountType: individual | business_admin | employee | admin
+// plan: free | pro
+// bgType: solid | gradient | image
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  username        String    @unique
+  password        String
+  accountType     String    @default("individual")
+  isActive        Boolean   @default(true)
+  displayName     String?
+  jobTitle        String?
+  department      String?
+  bio             String?
+  aboutText       String?
+  avatarUrl       String?
+  phone           String?
+  whatsapp        String?
+  website         String?
+  address         String?
+  businessHours   String?
+  leadFormEnabled Boolean   @default(false)
+
+  theme           String    @default("default")
+  template        String    @default("minimal")
+  bgType          String    @default("solid")
+  bgColor         String    @default("#f3f3f1")
+  bgGradient      String?
+  bgImage         String?
+  buttonStyle     String    @default("rounded")
+  buttonSize      String    @default("medium")
+  buttonColor     String    @default("#ffffff")
+  buttonTextColor String    @default("#000000")
+  fontFamily      String    @default("Inter")
+  textColor       String    @default("#000000")
+
+  plan            String    @default("free")
+  planExpiresAt   DateTime?
+
+  businessId      String?
+  business        Business? @relation("BusinessEmployees", fields: [businessId], references: [id])
+  ownedBusiness   Business? @relation("BusinessOwner")
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  links               Link[]
+  socialLinks         SocialLink[]
+  services            Service[]
+  portfolioItems      PortfolioItem[]
+  testimonials        Testimonial[]
+  products            StoreProduct[]
+  analyticsEvents     AnalyticsEvent[]
+  leads               Lead[]               @relation("LeadOwner")
+  cards               Card[]
+  orders              Order[]
+  notifications       Notification[]
+  subscriptionPayments SubscriptionPayment[]
+}
+
+// status: unassigned | active | deactivated
+model Card {
+  id         String    @id @default(uuid())
+  code       String    @unique
+  status     String    @default("unassigned")
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id])
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
+  assignedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// plan: free | tier10 | tier25 | tier50 | tier100 | enterprise
+model Business {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  logoUrl       String?
+  description   String?
+  website       String?
+  phone         String?
+  whatsapp      String?
+  email         String?
+  address       String?
+  category      String?
+  businessHours String?
+  brandColor    String   @default("#000000")
+
+  plan          String    @default("free")
+  planExpiresAt DateTime?
+
+  ownerId       String   @unique
+  owner         User     @relation("BusinessOwner", fields: [ownerId], references: [id])
+  employees     User[]   @relation("BusinessEmployees")
+  cards         Card[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptionPayments SubscriptionPayment[]
+}
+
+// iconName: lucide icon name (optional) shown to the left of the link title
+model Link {
+  id          String   @id @default(uuid())
+  title       String
+  url         String
+  thumbnail   String?
+  iconName    String?
+  description String?
+  isActive    Boolean  @default(true)
+  position    Int      @default(0)
+  clicks      Int      @default(0)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SocialLink {
+  id       String @id @default(uuid())
+  platform String
+  url      String
+  position Int    @default(0)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ctaType: contact | quote | book
+model Service {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       String?
+  ctaType     String   @default("contact")
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+// type: project | gallery
+model PortfolioItem {
+  id          String  @id @default(uuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  imageUrl    String?
+  videoUrl    String?
+  type        String  @default("project")
+  position    Int     @default(0)
+}
+
+model Testimonial {
+  id         String @id @default(uuid())
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authorName String
+  content    String
+  rating     Int    @default(5)
+  position   Int    @default(0)
+}
+
+// availability: available | out_of_stock | coming_soon | hidden
+// variants: JSON string, e.g. [{"name":"Color","options":["Black","White"]},{"name":"Size","options":["S","M","L"]}]
+model StoreProduct {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  imageUrl      String?
+  price         Float
+  discountPrice Float?
+  category      String?
+  variants      String?
+  availability  String   @default("available")
+  position      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// TapConnect physical marketplace product (Mini / Standard / Wristband)
+// availability: available | out_of_stock | coming_soon | hidden
+// images/colors: JSON string arrays
+model Product {
+  id                 String      @id @default(uuid())
+  name               String
+  slug               String      @unique
+  subtitle           String?
+  category           String      @default("NFC Cards")
+  sku                String?
+  stock              Int         @default(0)
+  description        String?
+  images             String?
+  length             Float?
+  width              Float?
+  colors             String?
+  priceRegular       Float
+  priceSale          Float?
+  productionTime     String      @default("3-5 business days")
+  availability       String      @default("available")
+  customizationPrice Float       @default(5000)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  orderItems         OrderItem[]
+}
+
+model DeliveryZone {
+  id   String @id @default(uuid())
+  name String @unique
+  fee  Float
+}
+
+// status: order_placed | payment_confirmed | profile_setup_required | profile_completed |
+//         preparing | in_production | quality_check | shipped | out_for_delivery | delivered | activated
+// paymentStatus: pending | paid | failed
+model Order {
+  id                   String      @id @default(uuid())
+  orderNumber          String      @unique
+  userId               String?
+  user                 User?       @relation(fields: [userId], references: [id])
+  customerName         String
+  customerEmail        String
+  customerPhone        String
+  state                String
+  city                 String
+  address              String
+  deliveryInstructions String?
+  deliveryFee          Float       @default(0)
+  subtotal             Float
+  total                Float
+  status               String      @default("order_placed")
+  paymentStatus        String      @default("pending")
+  profileSetupRequired Boolean     @default(true)
+  courierName          String?
+  trackingNumber       String?
+  shippedAt            DateTime?
+  deliveredAt          DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  items                OrderItem[]
+  payments             Payment[]
+}
+
+model OrderItem {
+  id                    String  @id @default(uuid())
+  orderId               String
+  order                 Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId             String
+  product               Product @relation(fields: [productId], references: [id])
+  color                 String?
+  customization         Boolean @default(false)
+  customizationNotes    String?
+  customizationFileUrl  String?
+  quantity              Int
+  unitPrice             Float
+}
+
+// status: pending | success | failed
+model Payment {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  provider    String   @default("paystack")
+  reference   String   @unique
+  amount      Float
+  status      String   @default("pending")
+  rawResponse String?
+  createdAt   DateTime @default(now())
+}
+
+// Individual Pro or business-tier subscription payment records (separate from
+// physical-order Payments, which always require an orderId).
+// status: pending | success | failed
+model SubscriptionPayment {
+  id          String    @id @default(uuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  businessId  String?
+  business    Business? @relation(fields: [businessId], references: [id])
+  plan        String
+  amount      Float
+  reference   String    @unique
+  status      String    @default("pending")
+  rawResponse String?
+  createdAt   DateTime  @default(now())
+}
+
+// status: new | contacted | interested | converted | lost
+// source: Website | Referral | Social Media | Advertisement | Other
+// message = original inquiry from the visitor; notes = admin's own follow-up notes
+model Lead {
+  id        String   @id @default(uuid())
+  ownerId   String
+  owner     User     @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  email     String?
+  message   String?
+  notes     String?
+  source    String   @default("Website")
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+// type: PROFILE_VIEW | NFC_TAP | QR_SCAN | CONTACT_SAVE | PHONE_CLICK | WHATSAPP_CLICK |
+//       EMAIL_CLICK | WEBSITE_CLICK | SOCIAL_CLICK | PRODUCT_VIEW | ADD_TO_CART |
+//       CHECKOUT_STARTED | ORDER_CREATED | LEAD_CREATED | BOOKING_REQUEST | SERVICE_REQUEST
+// meta: optional JSON string
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  meta      String?
+  createdAt DateTime @default(now())
+}
+
+// type: ORDER_PAID | PROFILE_SETUP_REQUIRED | ORDER_STATUS_CHANGED | SUBSCRIPTION_ACTIVATED |
+//       SUBSCRIPTION_EXPIRING | SUBSCRIPTION_EXPIRED | LEAD_RECEIVED
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
