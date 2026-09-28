@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ShoppingBag, Plus, Check, ChevronLeft, ChevronRight, Send } from 'lucide-react'
 import { addToCart, getCart, cartCount } from '@/lib/cart'
 
-export function CartBadge() {
+export function CartBadge({ invert = false }: { invert?: boolean }) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -16,10 +16,14 @@ export function CartBadge() {
   }, [])
 
   return (
-    <Link href="/cart" className="relative p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="View cart">
-      <ShoppingBag size={20} className="text-white" />
+    <Link
+      href="/cart"
+      className={`relative p-2 rounded-full transition-colors ${invert ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
+      aria-label="View cart"
+    >
+      <ShoppingBag size={20} className={invert ? 'text-black' : 'text-white'} />
       {count > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-black text-[10px] font-bold rounded-full flex items-center justify-center">
+        <span className={`absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center ${invert ? 'bg-black text-white' : 'bg-white text-black'}`}>
           {count > 9 ? '9+' : count}
         </span>
       )}

@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProductActions from './ProductActions'
+import { ShopHeader } from '@/components/ShopHeader'
+import { fallbackVisual } from '@/lib/productVisual'
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -13,19 +15,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const colors: string[] = product.colors ? JSON.parse(product.colors) : []
   const images: string[] = product.images ? JSON.parse(product.images) : []
+  const visual = images[0] ? { photo: images[0] } : fallbackVisual(product.category)
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-20 px-4">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <ShopHeader />
+      <div className="max-w-5xl mx-auto pt-16 pb-20 px-4">
         <Link href="/marketplace" className="text-sm font-semibold text-gray-500 hover:text-black">&larr; Back to marketplace</Link>
 
         <div className="grid md:grid-cols-2 gap-12 mt-6">
-          <div className="aspect-square bg-white rounded-3xl shadow-sm flex items-center justify-center text-gray-300 font-bold overflow-hidden">
-            {images[0] ? (
+          <div className="aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-3xl shadow-sm flex items-center justify-center overflow-hidden">
+            {'photo' in visual ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={images[0]} alt={product.name} className="w-full h-full object-cover" />
+              <img src={visual.photo} alt={product.name} className="w-full h-full object-cover" />
             ) : (
-              product.name
+              <div className="w-24 h-24 rounded-full bg-white shadow-md flex items-center justify-center">
+                <visual.icon size={36} className="text-black/70" />
+              </div>
             )}
           </div>
 

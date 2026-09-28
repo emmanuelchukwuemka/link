@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react'
 import { getCart, updateCartQuantity, removeFromCart, cartTotal, type CartItem } from '@/lib/cart'
+import { ShopHeader } from '@/components/ShopHeader'
 
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([])
@@ -18,19 +19,27 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-32 px-4 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <ShoppingBag size={28} className="text-gray-400" />
+      <div className="min-h-screen bg-gray-50">
+        <ShopHeader />
+        <div className="pt-24 pb-20 px-4 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShoppingBag size={28} className="text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#111111] mb-3">Your cart is empty</h1>
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <Link href="/" className="text-gray-500 font-semibold hover:text-black hover:underline">Go home</Link>
+            <span className="text-gray-300">&middot;</span>
+            <Link href="/marketplace" className="text-black font-semibold hover:underline">Browse the marketplace</Link>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-[#111111] mb-3">Your cart is empty</h1>
-        <Link href="/marketplace" className="text-[#000000] font-semibold hover:underline">Browse the marketplace</Link>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-20 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <ShopHeader />
+      <div className="max-w-3xl mx-auto pt-16 pb-20 px-4">
         <h1 className="text-3xl font-bold text-[#111111] mb-8">Your Cart</h1>
 
         <div className="space-y-4 mb-8">

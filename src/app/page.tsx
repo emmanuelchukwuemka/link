@@ -8,13 +8,14 @@ import { Logo } from '@/components/Logo'
 import { Reveal } from '@/components/Reveal'
 import { prisma } from '@/lib/prisma'
 import { PRO_PLAN_PRICE_NAIRA, BUSINESS_PLANS } from '@/lib/subscription'
+import { fallbackVisual } from '@/lib/productVisual'
 import { CartBadge, QuickAddButton, TestimonialCarousel, NewsletterForm } from './LandingInteractive'
 
 const STEPS = [
-  { n: '01', title: 'Get Your Card', body: 'Order a TapConnect card or wristband from our shop.', icon: ShoppingBag },
-  { n: '02', title: 'Tap or Scan', body: 'Tap the NFC card or scan the QR code with any phone.', icon: Smartphone },
-  { n: '03', title: 'View Profile', body: 'Your digital profile opens instantly.', icon: Eye },
-  { n: '04', title: 'Connect & Grow', body: 'Visitors can contact you, view your products/services and more, while you get real analytics.', icon: TrendingUp },
+  { n: '01', title: 'Get Your Card', body: 'Order a TapConnect card or wristband from our shop.', icon: ShoppingBag, image: '/step-1-card.jpg' },
+  { n: '02', title: 'Tap or Scan', body: 'Tap the NFC card or scan the QR code with any phone.', icon: Smartphone, image: '/step-2-tap.jpg' },
+  { n: '03', title: 'View Profile', body: 'Your digital profile opens instantly.', icon: Eye, image: '/step-3-profile.jpg' },
+  { n: '04', title: 'Connect & Grow', body: 'Visitors can contact you, view your products/services and more, while you get real analytics.', icon: TrendingUp, image: '/step-4-analytics.jpg' },
 ]
 
 const CHECKLIST_LEFT = ['Contact information', 'Social media links', 'Product catalogue & mini store', 'Service listings']
@@ -193,18 +194,24 @@ export default async function Home() {
               const Icon = step.icon
               return (
                 <Reveal key={step.n} delay={i * 100}>
-                  <div className="relative bg-[#F7F7F5] rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg h-full">
-                    <span className="w-11 h-11 rounded-xl bg-black text-white flex items-center justify-center mb-4">
-                      <Icon size={18} />
-                    </span>
-                    <span className="text-xs font-bold text-[#B8B8B8]">{step.n}</span>
-                    <h3 className="font-bold text-lg mt-1 mb-2">{step.title}</h3>
-                    <p className="text-sm text-[#6B6B6B] leading-relaxed">{step.body}</p>
-                    {i < STEPS.length - 1 && (
-                      <span className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 text-[#B8B8B8]">
-                        <ArrowRight size={18} />
+                  <div className="group">
+                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-[#F0F0EE] mb-5 shadow-sm">
+                      <Image
+                        src={step.image}
+                        alt={step.title}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                      <span className="absolute top-3 right-3 bg-white/90 text-black text-xs font-bold px-2.5 py-1 rounded-full">
+                        {step.n}
                       </span>
-                    )}
+                      <span className="absolute bottom-3 left-3 w-10 h-10 rounded-full bg-black text-white flex items-center justify-center shadow-lg">
+                        <Icon size={16} />
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">{step.title}</h3>
+                    <p className="text-sm text-[#6B6B6B] leading-relaxed">{step.body}</p>
                   </div>
                 </Reveal>
               )
@@ -232,13 +239,20 @@ export default async function Home() {
             {products.map((p, i) => {
               const colors: string[] = p.colors ? JSON.parse(p.colors) : []
               const savings = p.priceSale ? p.priceRegular - p.priceSale : 0
+              const images: string[] = p.images ? JSON.parse(p.images) : []
+              const visual = images[0] ? { photo: images[0] } : fallbackVisual(p.category)
               return (
                 <Reveal key={p.id} delay={i * 80}>
                 <div className="group bg-white rounded-3xl p-5 shadow-sm flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   <Link href={`/marketplace/${p.slug}`} className="relative aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
-                    <div className="w-20 h-14 rounded-lg bg-white shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                      <Nfc size={22} className="text-black/70" />
-                    </div>
+                    {'photo' in visual ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                        <visual.icon size={26} className="text-black/70" />
+                      </div>
+                    )}
                   </Link>
                   <Link href={`/marketplace/${p.slug}`} className="font-bold hover:underline">{p.name}</Link>
                   {(p.length || p.width) && (

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getCart, cartTotal, clearCart, type CartItem } from '@/lib/cart'
+import { ShopHeader } from '@/components/ShopHeader'
 
 type DeliveryZone = { id: string; name: string; fee: number }
 
@@ -65,16 +66,24 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-32 px-4 text-center">
-        <h1 className="text-2xl font-bold text-[#111111] mb-3">Your cart is empty</h1>
-        <Link href="/marketplace" className="text-[#000000] font-semibold hover:underline">Browse the marketplace</Link>
+      <div className="min-h-screen bg-gray-50">
+        <ShopHeader />
+        <div className="pt-24 px-4 text-center">
+          <h1 className="text-2xl font-bold text-[#111111] mb-3">Your cart is empty</h1>
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <Link href="/" className="text-gray-500 font-semibold hover:text-black hover:underline">Go home</Link>
+            <span className="text-gray-300">&middot;</span>
+            <Link href="/marketplace" className="text-black font-semibold hover:underline">Browse the marketplace</Link>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-20 px-4">
-      <div className="max-w-3xl mx-auto grid md:grid-cols-[1fr_320px] gap-8 items-start">
+    <div className="min-h-screen bg-gray-50">
+      <ShopHeader />
+      <div className="max-w-3xl mx-auto pt-16 pb-20 px-4 grid md:grid-cols-[1fr_320px] gap-8 items-start">
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 shadow-sm space-y-4">
           <h1 className="text-2xl font-bold mb-2">Checkout</h1>
 
