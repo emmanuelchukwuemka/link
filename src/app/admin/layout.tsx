@@ -7,7 +7,7 @@ import { Logo } from '@/components/Logo'
 import { NotificationBell } from '@/components/NotificationBell'
 import {
   LayoutDashboard, Package, ClipboardList, CreditCard, Truck, Users, MessageSquareText,
-  LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink, MessageCircle,
+  LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink, MessageCircle, Mail,
 } from 'lucide-react'
 
 type AdminUser = {
@@ -24,6 +24,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [supportUnread, setSupportUnread] = useState(0)
+  const [messagesUnread, setMessagesUnread] = useState(0)
 
   useEffect(() => {
     const loadSupportUnread = () => {
@@ -33,8 +34,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         }
       })
     }
+    const loadMessagesUnread = () => {
+      fetch('/api/admin/contact-messages').then((res) => res.json()).then((data) => {
+        if (data.messages) {
+          setMessagesUnread(data.messages.filter((m: { status: string }) => m.status === 'new').length)
+        }
+      })
+    }
     loadSupportUnread()
-    const interval = setInterval(loadSupportUnread, 20000)
+    loadMessagesUnread()
+    const interval = setInterval(() => { loadSupportUnread(); loadMessagesUnread() }, 20000)
     return () => clearInterval(interval)
   }, [])
   const [openGroups, setOpenGroups] = useState<Set<string>>(
@@ -86,6 +95,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Subscriptions', href: '/admin/subscriptions', icon: Crown },
     { name: 'Leads', href: '/admin/leads', icon: MessageSquareText },
     { name: 'Support', href: '/admin/support', icon: MessageCircle, badge: supportUnread },
+    { name: 'Messages', href: '/admin/messages', icon: Mail, badge: messagesUnread },
     { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { name: 'Delivery', href: '/admin/delivery-zones', icon: Truck },
     { name: 'Notifications', href: '/admin/notifications', icon: Megaphone },

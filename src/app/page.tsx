@@ -3,14 +3,14 @@ import Image from 'next/image'
 import {
   Search, ArrowRight, Star, Nfc, Store, BarChart3, IdCard, Check,
   Building2, Users2, Sparkles, ShoppingBag, Smartphone, Eye, TrendingUp, Crown,
-  Play, Handshake, Briefcase,
+  Play, Handshake, Briefcase, Mail,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Reveal } from '@/components/Reveal'
 import { prisma } from '@/lib/prisma'
 import { PRO_PLAN_PRICE_NAIRA, BUSINESS_PLANS } from '@/lib/subscription'
 import { fallbackVisual } from '@/lib/productVisual'
-import { CartBadge, QuickAddButton, TestimonialCarousel, NewsletterForm } from './LandingInteractive'
+import { CartBadge, QuickAddButton, TestimonialCarousel, NewsletterForm, ContactForm } from './LandingInteractive'
 
 const STEPS = [
   { n: '01', title: 'Get Your Card', body: 'Order a TapConnect card or wristband from our shop.', icon: ShoppingBag, image: '/step-1-card.jpg' },
@@ -605,8 +605,40 @@ export default async function Home() {
         </Reveal>
       </section>
 
+      {/* ===== Contact ===== */}
+      <section id="contact" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F7F7F5]">
+        <div className="max-w-[1504px] mx-auto grid lg:grid-cols-2 gap-16 items-start">
+          <Reveal>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#6B6B6B] mb-3">Get in Touch</p>
+              <h2 className="text-4xl sm:text-5xl font-bold leading-tight mb-4">
+                Questions? We&apos;d Love to Hear From You.
+              </h2>
+              <p className="text-[#6B6B6B] leading-relaxed mb-8 max-w-md">
+                Whether it&apos;s a question about your order, a bulk purchase for your team, or just feedback — send us a message and a real person will get back to you.
+              </p>
+              <div className="space-y-4">
+                <a href="mailto:hello@tapconnect.ng" className="flex items-center gap-3 group">
+                  <span className="w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0">
+                    <Mail size={17} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold group-hover:underline">hello@tapconnect.ng</span>
+                    <span className="block text-xs text-[#6B6B6B]">We usually reply within a few hours</span>
+                  </span>
+                </a>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <ContactForm />
+          </Reveal>
+        </div>
+      </section>
+
       {/* ===== Footer ===== */}
-      <footer id="contact" className="bg-[#0A0A0A] text-white/60 pt-16 pb-8 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-[#0A0A0A] text-white/60 pt-16 pb-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1504px] mx-auto grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
           <div className="lg:col-span-1 sm:col-span-2">
             <Logo className="h-9 w-auto mb-4" />

@@ -382,6 +382,20 @@ model NewsletterSubscriber {
   createdAt DateTime @default(now())
 }
 
+// Public "Contact Us" submissions from the landing page — unlike Lead (which is
+// scoped to a specific TapConnect user's own public profile), these go straight
+// to the platform admins.
+// status: new | read | responded
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
 model PasswordResetToken {
   id        String   @id @default(uuid())
   userId    String

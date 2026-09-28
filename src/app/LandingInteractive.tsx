@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ShoppingBag, Plus, Check, ChevronLeft, ChevronRight, Send } from 'lucide-react'
+import { ShoppingBag, Plus, Check, ChevronLeft, ChevronRight, Send, CheckCircle2 } from 'lucide-react'
 import { addToCart, getCart, cartCount } from '@/lib/cart'
 
 export function CartBadge({ invert = false }: { invert?: boolean }) {
@@ -147,6 +147,92 @@ export function NewsletterForm() {
         <Send size={16} />
       </button>
       {status === 'error' && <p className="text-xs text-red-300 absolute mt-12">Something went wrong.</p>}
+    </form>
+  )
+}
+
+export function ContactForm() {
+  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' })
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setStatus('sending')
+    setError('')
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Something went wrong')
+      setStatus('sent')
+      setForm({ name: '', email: '', phone: '', message: '' })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setStatus('error')
+    }
+  }
+
+  if (status === 'sent') {
+    return (
+      <div className="bg-white rounded-3xl p-8 shadow-sm text-center">
+        <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 size={26} className="text-green-600" />
+        </div>
+        <h3 className="text-lg font-bold text-[#111111] mb-1">Message sent</h3>
+        <p className="text-sm text-[#6B6B6B]">Thanks for reaching out — our team will get back to you shortly.</p>
+        <button onClick={() => setStatus('idle')} className="mt-5 text-sm font-semibold underline hover:text-black">
+          Send another message
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+      {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm">{error}</div>}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <input
+          required
+          placeholder="Full name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className="px-4 py-3 rounded-lg bg-gray-100 outline-none text-sm"
+        />
+        <input
+          required
+          type="email"
+          placeholder="Email address"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          className="px-4 py-3 rounded-lg bg-gray-100 outline-none text-sm"
+        />
+      </div>
+      <input
+        type="tel"
+        placeholder="Phone number (optional)"
+        value={form.phone}
+        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+        className="w-full px-4 py-3 rounded-lg bg-gray-100 outline-none text-sm"
+      />
+      <textarea
+        required
+        placeholder="How can we help?"
+        value={form.message}
+        onChange={(e) => setForm({ ...form, message: e.target.value })}
+        rows={5}
+        className="w-full px-4 py-3 rounded-lg bg-gray-100 outline-none text-sm resize-none"
+      />
+      <button
+        type="submit"
+        disabled={status === 'sending'}
+        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-black text-white px-6 py-3.5 rounded-full font-semibold hover:bg-[#111111] transition-colors disabled:opacity-60"
+      >
+        {status === 'sending' ? 'Sending...' : 'Send Message'} <Send size={15} />
+      </button>
     </form>
   )
 }
