@@ -221,16 +221,20 @@ model Product {
 
 // scope: marketplace (admin-managed TapConnect Product catalog, userId is null) |
 //        store (a single user's own StoreProduct catalog, scoped to that userId)
+// parentId: set for a subcategory nested one level under another Category (self-relation)
 model Category {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
-  scope     String   @default("marketplace")
+  scope     String     @default("marketplace")
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[] @relation("CategoryChildren")
+  position  Int        @default(0)
+  createdAt DateTime   @default(now())
 
-  @@unique([scope, userId, name])
+  @@unique([scope, userId, parentId, name])
 }
 
 // A flat per-user support thread — one conversation per user, admin replies land

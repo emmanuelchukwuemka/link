@@ -108,10 +108,11 @@ function toDraft(p: Product): Draft {
 }
 
 function ProductModal({
-  draft, categories, onClose, onSave, onDelete,
+  draft, categories, categoryTree, onClose, onSave, onDelete,
 }: {
   draft: Draft
   categories: string[]
+  categoryTree: CategoryTreeNode[]
   onClose: () => void
   onSave: (draft: Draft) => Promise<string | void>
   onDelete?: () => void
@@ -192,7 +193,14 @@ function ProductModal({
                 className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black"
               >
                 {!categories.includes(values.category) && <option value={values.category}>{values.category}</option>}
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                {categoryTree.map((root) => (
+                  <optgroup key={root.id} label={root.name}>
+                    <option value={root.name}>{root.name}</option>
+                    {root.children.map((child) => (
+                      <option key={child.id} value={child.name}>&mdash; {child.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <div>
@@ -275,7 +283,7 @@ function ProductModal({
   )
 }
 
-type CategoryRecord = { id: string; name: string }
+type CategoryTreeNode = { id: string; name: string; parentId: string | null; children: CategoryTreeNode[] }
 
 function draftFromProductAsCopy(p: Product): Draft {
   const d = toDraft(p)
@@ -292,7 +300,7 @@ export default function AdminProductsPage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
-  const [categoryRecords, setCategoryRecords] = useState<CategoryRecord[]>([])
+  const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>([])
 
   useEffect(() => {
     fetch('/api/admin/products').then((res) => res.json()).then((data) => {
@@ -300,7 +308,7 @@ export default function AdminProductsPage() {
       setLoading(false)
     })
     fetch('/api/admin/categories').then((res) => res.json()).then((data) => {
-      if (data.categories) setCategoryRecords(data.categories)
+      if (data.categories) setCategoryTree(data.categories)
     })
   }, [])
 
@@ -310,14 +318,17 @@ export default function AdminProductsPage() {
     return counts
   }, [products])
 
-  // Union of managed categories (edited on the Categories page) and any legacy
-  // category strings still present on products but not (yet) in the managed list,
-  // so nothing is ever silently hidden from this page's picker/filters.
+  // Union of managed categories (edited on the Categories page, including
+  // subcategories) and any legacy category strings still present on products but
+  // not (yet) in the managed list, so nothing is ever silently hidden from this
+  // page's picker/filters.
   const categories = useMemo(() => {
-    const names = new Set(categoryRecords.map((c) => c.name))
+    const names = new Set<string>()
+    const walk = (nodes: CategoryTreeNode[]) => nodes.forEach((n) => { names.add(n.name); walk(n.children) })
+    walk(categoryTree)
     products.forEach((p) => names.add(p.category))
     return Array.from(names).sort()
-  }, [categoryRecords, products])
+  }, [categoryTree, products])
 
   const handleSave = async (draft: Draft): Promise<string | void> => {
     const payload = {
@@ -665,6 +676,7 @@ export default function AdminProductsPage() {
         <ProductModal
           draft={modalDraft}
           categories={categories}
+          categoryTree={categoryTree}
           onClose={() => setModalDraft(null)}
           onSave={handleSave}
           onDelete={modalDraft.id ? () => handleDelete(modalDraft.id!) : undefined}

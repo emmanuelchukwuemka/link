@@ -32,7 +32,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const trimmed = name.trim()
-  const clash = await prisma.category.findFirst({ where: { scope: 'marketplace', name: trimmed, NOT: { id } } })
+  const clash = await prisma.category.findFirst({
+    where: { scope: 'marketplace', parentId: category.parentId, name: trimmed, NOT: { id } },
+  })
   if (clash) {
     return NextResponse.json({ error: 'That category already exists' }, { status: 409 })
   }
