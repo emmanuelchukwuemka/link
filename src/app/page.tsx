@@ -3,6 +3,7 @@ import Image from 'next/image'
 import {
   Search, ArrowRight, Star, Nfc, Store, BarChart3, IdCard, Check,
   Building2, Users2, Sparkles, ShoppingBag, Smartphone, Eye, TrendingUp, Crown,
+  Play, Handshake, Briefcase,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Reveal } from '@/components/Reveal'
@@ -299,42 +300,97 @@ export default async function Home() {
       </section>
 
       {/* ===== One Platform ===== */}
-      <section id="about" className="py-24 px-4 sm:px-6 lg:px-8">
+      <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="max-w-[1504px] mx-auto">
-          <Reveal>
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
-            <h2 className="text-4xl sm:text-5xl font-bold leading-tight max-w-lg">
-              One Platform.<br />Endless Possibilities.
-            </h2>
-            <div className="flex flex-col gap-4 max-w-sm">
-              <p className="text-[#6B6B6B]">
-                TapConnect is built for individuals, businesses and large organizations. Whether you&apos;re a professional, a small business or a large enterprise, TapConnect helps you stand out.
-              </p>
-              <Link href="/register" className="inline-flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-full font-semibold text-sm hover:bg-[#111111] transition-colors w-fit whitespace-nowrap">
-                Get Started <ArrowRight size={14} />
-              </Link>
-            </div>
+          <div className="grid lg:grid-cols-2 gap-16 items-center mb-20">
+            <Reveal>
+              <div>
+                <div className="flex items-center gap-2.5 mb-5">
+                  <span className="w-8 h-0.5 rounded-full bg-gradient-to-r from-green-500 to-blue-500" />
+                  <span className="text-xs font-bold tracking-[0.15em] text-[#6B6B6B] uppercase">Designed for Everyone</span>
+                </div>
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                  One Platform.<br />
+                  Endless <span className="bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">Possibilities.</span>
+                </h2>
+                <p className="text-[#6B6B6B] text-lg leading-relaxed mb-8 max-w-lg">
+                  TapConnect is built for individuals, businesses and large organizations. Whether you&apos;re a professional, a small business or a large enterprise, TapConnect helps you stand out.
+                </p>
+                <div className="flex items-center gap-6">
+                  <Link href="/register" className="inline-flex items-center gap-2 bg-black text-white px-6 py-3.5 rounded-full font-semibold hover:bg-[#111111] transition-colors">
+                    Get Started <ArrowRight size={16} />
+                  </Link>
+                  <a href="#how-it-works" className="inline-flex items-center gap-3 font-semibold text-sm hover:opacity-70 transition-opacity">
+                    <span className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center">
+                      <Play size={12} className="ml-0.5" fill="currentColor" />
+                    </span>
+                    See how it works
+                  </a>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={150}>
+              <div className="relative max-w-md mx-auto lg:max-w-none">
+                <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-[#F7F7F5] -z-10" />
+                <div className="absolute -bottom-6 -right-6 w-28 h-28 rounded-full bg-green-50 -z-10" />
+
+                <div className="rounded-3xl overflow-hidden shadow-xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/hero-woman.jpg" alt="Professional viewing profile analytics on her phone" className="w-full h-auto object-cover" />
+                </div>
+
+                <div className="absolute -right-3 sm:-right-8 top-8 bg-white rounded-2xl shadow-xl p-4 w-44">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Star size={15} className="text-green-500 fill-green-500" />
+                    <span className="font-bold text-sm">New Opportunities</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {[
+                      { icon: Users2, label: 'Clients', color: 'bg-blue-100 text-blue-600' },
+                      { icon: Handshake, label: 'Collaborations', color: 'bg-purple-100 text-purple-600' },
+                      { icon: Briefcase, label: 'Partnerships', color: 'bg-green-100 text-green-600' },
+                    ].map(({ icon: Icon, label, color }) => (
+                      <div key={label} className="flex items-center gap-2 text-xs font-medium">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${color}`}>
+                          <Icon size={12} />
+                        </span>
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Reveal>
           </div>
-          </Reveal>
 
           <div className="grid sm:grid-cols-3 gap-6">
             {[
-              { icon: Users2, title: 'Individuals', body: 'Professionals, creators, freelancers, students and more.', cta: 'Create Your Profile', href: '/register' },
-              { icon: Building2, title: 'Businesses', body: 'Companies, teams, multiple employees and branding.', cta: 'Explore Business Plans', href: '/register?type=business' },
-              { icon: Sparkles, title: 'Enterprises', body: 'Large organizations with advanced team management and analytics.', cta: 'Contact Sales', href: 'mailto:sales@tapconnect.ng' },
-            ].map(({ icon: Icon, title, body, cta, href }, i) => (
+              { image: '/individual-person.jpg', badge: 'bg-blue-500', icon: Users2, title: 'Individuals', body: 'Professionals, creators, freelancers, students and more.', cta: 'Create Your Profile', href: '/register' },
+              { image: '/business-team.jpg', badge: 'bg-green-600', icon: Building2, title: 'Businesses', body: 'Companies, teams, multiple employees and branding.', cta: 'Explore Business Plans', href: '/register?type=business' },
+              { image: '/enterprise-building.jpg', badge: 'bg-purple-600', icon: Sparkles, title: 'Enterprises', body: 'Large organizations with advanced team management and analytics.', cta: 'Contact Sales', href: 'mailto:sales@tapconnect.ng' },
+            ].map(({ image, badge, icon: Icon, title, body, cta, href }, i) => (
               <Reveal key={title} delay={i * 100}>
               <Link
                 href={href}
-                className="group relative rounded-3xl overflow-hidden bg-[#0A0A0A] text-white p-8 flex flex-col justify-end min-h-[280px] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl"
+                className="group relative rounded-3xl overflow-hidden min-h-[320px] flex flex-col justify-end transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
-                <Icon size={28} className="mb-6 relative transition-transform duration-300 group-hover:scale-110" />
-                <h3 className="text-xl font-bold relative">{title}</h3>
-                <p className="text-white/60 text-sm mt-1 mb-4 relative">{body}</p>
-                <span className="inline-flex items-center gap-2 font-semibold text-sm relative">
-                  {cta} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/10" />
+                <div className="relative p-8">
+                  <span className={`inline-flex w-11 h-11 rounded-full items-center justify-center mb-5 ${badge}`}>
+                    <Icon size={20} className="text-white" />
+                  </span>
+                  <h3 className="text-xl font-bold text-white">{title}</h3>
+                  <p className="text-white/70 text-sm mt-1 mb-5">{body}</p>
+                  <span className="inline-flex items-center gap-2.5 font-semibold text-sm text-white">
+                    {cta}
+                    <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center group-hover:bg-white/25 group-hover:translate-x-0.5 transition-all">
+                      <ArrowRight size={13} />
+                    </span>
+                  </span>
+                </div>
               </Link>
               </Reveal>
             ))}

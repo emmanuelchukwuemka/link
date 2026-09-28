@@ -5,10 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Logo } from '@/components/Logo'
 import { NotificationBell } from '@/components/NotificationBell'
+import { SupportChatWidget } from '@/components/SupportChatWidget'
 import {
   LayoutDashboard, Link as LinkIcon, User, Settings, LogOut,
   CreditCard, Store, MessageSquareText, Building2, Crown, Menu, X,
-  Package, BarChart3, Search, Headphones, ChevronDown,
+  Package, BarChart3, Search, Headphones, ChevronDown, ChevronRight,
 } from 'lucide-react'
 
 type CurrentUser = {
@@ -32,6 +33,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [me, setMe] = useState<CurrentUser | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    new Set(pathname.startsWith('/dashboard/store') || pathname.startsWith('/dashboard/services') || pathname.startsWith('/dashboard/portfolio') ? ['Products & Services'] : [])
+  )
+  const toggleGroup = (name: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -51,7 +63,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'My Profile', href: '/dashboard/appearance', icon: User },
     { name: 'My Cards', href: '/dashboard/cards', icon: CreditCard },
     { name: 'My Links', href: '/dashboard/links', icon: LinkIcon },
-    { name: 'Products & Services', href: '/dashboard/store', icon: Store },
+    {
+      name: 'Products & Services', icon: Store, sub: [
+        { name: 'Store', href: '/dashboard/store' },
+        { name: 'Services', href: '/dashboard/services' },
+        { name: 'Portfolio', href: '/dashboard/portfolio' },
+        { name: 'Categories', href: '/dashboard/store/categories' },
+      ],
+    },
     { name: 'Orders', href: '/dashboard/orders', icon: Package },
     { name: 'Leads', href: '/dashboard/leads', icon: MessageSquareText },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
@@ -62,6 +81,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isActive = (href: string) => href === '/dashboard' ? pathname === href : pathname.startsWith(href)
 
+  // For a group's sub-items, a nested route (e.g. /dashboard/store/categories) should only
+  // highlight its own, most specific entry — not also the parent it happens to start with.
+  const isSubActive = (href: string, siblingHrefs: string[]) => {
+    const matches = siblingHrefs.filter((h) => pathname === h || pathname.startsWith(h + '/'))
+    if (matches.length === 0) return false
+    const mostSpecific = [...matches].sort((a, b) => b.length - a.length)[0]
+    return mostSpecific === href
+  }
+
   const SidebarContent = (
     <div className="flex flex-col h-full">
       <Link href="/" className="flex items-center px-6 py-6">
@@ -70,12 +98,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const active = isActive(item.href)
           const Icon = item.icon
+          if (item.sub) {
+            const groupActive = item.sub.some((s) => isSubActive(s.href, item.sub!.map((x) => x.href)))
+            const open = openGroups.has(item.name)
+            return (
+              <div key={item.name}>
+                <button
+                  onClick={() => toggleGroup(item.name)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                    groupActive ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span className="flex-1 text-left">{item.name}</span>
+                  {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                {open && (
+                  <div className="ml-6 mt-1 space-y-1 border-l border-white/10 pl-3">
+                    {item.sub.map((s) => (
+                      <Link
+                        key={s.href}
+                        href={s.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          isSubActive(s.href, item.sub!.map((x) => x.href)) ? 'text-white font-semibold' : 'text-white/50 hover:text-white'
+                        }`}
+                      >
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          }
+          const active = isActive(item.href!)
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={item.href!}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
                 active ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -188,6 +250,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      <SupportChatWidget />
     </div>
   )
 }

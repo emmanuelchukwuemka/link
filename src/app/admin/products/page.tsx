@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import {
   Plus, Trash2, Package, X, Pencil, ImageOff, Ruler, Palette,
-  CheckCircle2, XCircle, Upload, MoreVertical, ChevronLeft, ChevronRight, Copy,
+  CheckCircle2, XCircle, Upload, MoreVertical, ChevronLeft, ChevronRight, Copy, Tag,
 } from 'lucide-react'
 import { ImageUploader } from '@/components/ImageUploader'
 
@@ -184,16 +185,15 @@ function ProductModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-black mb-1.5">Category</label>
-              <input
+              <select
                 required
-                list="category-options"
                 value={values.category}
                 onChange={(e) => set('category', e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black"
-              />
-              <datalist id="category-options">
-                {categories.map((c) => <option key={c} value={c} />)}
-              </datalist>
+              >
+                {!categories.includes(values.category) && <option value={values.category}>{values.category}</option>}
+                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-black mb-1.5">SKU</label>
@@ -275,6 +275,8 @@ function ProductModal({
   )
 }
 
+type CategoryRecord = { id: string; name: string }
+
 function draftFromProductAsCopy(p: Product): Draft {
   const d = toDraft(p)
   return { ...d, id: undefined, name: `${p.name} (Copy)`, sku: '' }
@@ -290,15 +292,32 @@ export default function AdminProductsPage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
+  const [categoryRecords, setCategoryRecords] = useState<CategoryRecord[]>([])
 
   useEffect(() => {
     fetch('/api/admin/products').then((res) => res.json()).then((data) => {
       if (data.products) setProducts(data.products)
       setLoading(false)
     })
+    fetch('/api/admin/categories').then((res) => res.json()).then((data) => {
+      if (data.categories) setCategoryRecords(data.categories)
+    })
   }, [])
 
-  const categories = useMemo(() => Array.from(new Set(products.map((p) => p.category))).sort(), [products])
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const p of products) counts[p.category] = (counts[p.category] || 0) + 1
+    return counts
+  }, [products])
+
+  // Union of managed categories (edited on the Categories page) and any legacy
+  // category strings still present on products but not (yet) in the managed list,
+  // so nothing is ever silently hidden from this page's picker/filters.
+  const categories = useMemo(() => {
+    const names = new Set(categoryRecords.map((c) => c.name))
+    products.forEach((p) => names.add(p.category))
+    return Array.from(names).sort()
+  }, [categoryRecords, products])
 
   const handleSave = async (draft: Draft): Promise<string | void> => {
     const payload = {
@@ -447,6 +466,9 @@ export default function AdminProductsPage() {
           <p className="text-gray-600 text-sm mt-1">Manage your TapConnect physical products, prices, inventory and more.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/admin/categories" className="bg-white border border-gray-200 text-black px-4 py-2.5 rounded-full font-semibold text-sm flex items-center gap-2 hover:bg-gray-50 whitespace-nowrap">
+            <Tag size={16} /> Categories
+          </Link>
           <label className="bg-white border border-gray-200 text-black px-4 py-2.5 rounded-full font-semibold text-sm flex items-center gap-2 hover:bg-gray-50 cursor-pointer whitespace-nowrap">
             <Upload size={16} /> {importing ? 'Importing...' : 'Import'}
             <input type="file" accept=".csv,text/csv" onChange={handleImport} disabled={importing} className="hidden" />
@@ -501,7 +523,7 @@ export default function AdminProductsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm transition-colors ${category === c ? 'bg-green-600 text-white' : 'bg-white text-black border border-gray-200 hover:bg-gray-50'}`}
           >
             {c}
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${category === c ? 'bg-white/20' : 'bg-gray-100'}`}>{products.filter((p) => p.category === c).length}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${category === c ? 'bg-white/20' : 'bg-gray-100'}`}>{categoryCounts[c] || 0}</span>
           </button>
         ))}
       </div>

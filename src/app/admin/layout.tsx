@@ -7,7 +7,7 @@ import { Logo } from '@/components/Logo'
 import { NotificationBell } from '@/components/NotificationBell'
 import {
   LayoutDashboard, Package, ClipboardList, CreditCard, Truck, Users, MessageSquareText,
-  LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink,
+  LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink, MessageCircle,
 } from 'lucide-react'
 
 type AdminUser = {
@@ -23,7 +23,34 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<AdminUser | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [usersOpen, setUsersOpen] = useState(pathname.startsWith('/admin/users'))
+  const [supportUnread, setSupportUnread] = useState(0)
+
+  useEffect(() => {
+    const loadSupportUnread = () => {
+      fetch('/api/admin/support').then((res) => res.json()).then((data) => {
+        if (data.conversations) {
+          setSupportUnread(data.conversations.reduce((sum: number, c: { unreadCount: number }) => sum + c.unreadCount, 0))
+        }
+      })
+    }
+    loadSupportUnread()
+    const interval = setInterval(loadSupportUnread, 20000)
+    return () => clearInterval(interval)
+  }, [])
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    new Set([
+      ...(pathname.startsWith('/admin/users') ? ['Users'] : []),
+      ...(pathname.startsWith('/admin/products') || pathname.startsWith('/admin/categories') ? ['Products'] : []),
+    ])
+  )
+  const toggleGroup = (name: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -48,11 +75,17 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         { name: 'Employees', href: '/admin/users?type=employee' },
       ],
     },
-    { name: 'Products', href: '/admin/products', icon: Package },
+    {
+      name: 'Products', icon: Package, sub: [
+        { name: 'All Products', href: '/admin/products' },
+        { name: 'Categories', href: '/admin/categories' },
+      ],
+    },
     { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
     { name: 'NFC Cards', href: '/admin/cards', icon: CreditCard },
     { name: 'Subscriptions', href: '/admin/subscriptions', icon: Crown },
     { name: 'Leads', href: '/admin/leads', icon: MessageSquareText },
+    { name: 'Support', href: '/admin/support', icon: MessageCircle, badge: supportUnread },
     { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { name: 'Delivery', href: '/admin/delivery-zones', icon: Truck },
     { name: 'Notifications', href: '/admin/notifications', icon: Megaphone },
@@ -74,20 +107,21 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         {navItems.map((item) => {
           const Icon = item.icon
           if (item.sub) {
-            const groupActive = pathname.startsWith('/admin/users')
+            const groupActive = item.sub.some((s) => pathname.startsWith(s.href.split('?')[0]))
+            const open = openGroups.has(item.name)
             return (
               <div key={item.name}>
                 <button
-                  onClick={() => setUsersOpen(!usersOpen)}
+                  onClick={() => toggleGroup(item.name)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
                     groupActive ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <Icon size={18} />
                   <span className="flex-1 text-left">{item.name}</span>
-                  {usersOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
-                {usersOpen && (
+                {open && (
                   <div className="ml-6 mt-1 space-y-1 border-l border-white/10 pl-3">
                     {item.sub.map((s) => (
                       <Link
@@ -117,7 +151,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               }`}
             >
               <Icon size={18} />
-              {item.name}
+              <span className="flex-1">{item.name}</span>
+              {!!item.badge && (
+                <span className="min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
+              )}
             </Link>
           )
         })}

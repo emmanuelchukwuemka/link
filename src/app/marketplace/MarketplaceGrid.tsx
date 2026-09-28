@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { Search, SlidersHorizontal, LayoutGrid, CreditCard, Watch, Package, Sparkles, type LucideIcon } from 'lucide-react'
 import { fallbackVisual } from '@/lib/productVisual'
 import { WishlistButton, AddToCartButton } from './MarketplaceInteractive'
 
@@ -33,6 +33,16 @@ const SWATCH_COLORS: Record<string, string> = {
 
 function swatchColor(name: string) {
   return SWATCH_COLORS[name] || '#9CA3AF'
+}
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  'NFC Cards': CreditCard,
+  Wristbands: Watch,
+  Accessories: Package,
+}
+
+function categoryIcon(name: string): LucideIcon {
+  return CATEGORY_ICONS[name] || Sparkles
 }
 
 type Sort = 'featured' | 'price-asc' | 'price-desc' | 'newest'
@@ -77,24 +87,35 @@ export function MarketplaceGrid({ products }: { products: GridProduct[] }) {
   }, [products, category, query, sort])
 
   return (
-    <div>
-      <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {categories.map((c) => (
-            <button
-              key={c.name}
-              onClick={() => setCategory(c.name)}
-              className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                category === c.name ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              {c.label} <span className={category === c.name ? 'text-white/60' : 'text-gray-400'}>({c.count})</span>
-            </button>
-          ))}
+    <div className="flex flex-col lg:flex-row gap-8">
+      <aside className="lg:w-56 shrink-0">
+        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Categories</h2>
+        <div className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap lg:gap-1">
+          {categories.map((c) => {
+            const Icon = c.name === 'all' ? LayoutGrid : categoryIcon(c.name)
+            const active = category === c.name
+            return (
+              <button
+                key={c.name}
+                onClick={() => setCategory(c.name)}
+                className={`flex items-center gap-2.5 px-4 py-2.5 lg:px-3 lg:py-2 rounded-full lg:rounded-lg text-sm font-semibold transition-colors ${
+                  active
+                    ? 'bg-black text-white'
+                    : 'bg-white lg:bg-transparent border border-gray-200 lg:border-0 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon size={16} className={active ? 'text-white' : 'text-gray-500'} />
+                <span className="lg:flex-1 lg:text-left">{c.label}</span>
+                <span className={active ? 'text-white/60' : 'text-gray-400'}>{c.count}</span>
+              </button>
+            )
+          })}
         </div>
+      </aside>
 
-        <div className="flex gap-2 shrink-0">
-          <div className="relative flex-1 sm:w-52">
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-end gap-2 mb-6">
+          <div className="relative flex-1 sm:flex-initial sm:w-52">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               value={query}
@@ -116,21 +137,20 @@ export function MarketplaceGrid({ products }: { products: GridProduct[] }) {
             </select>
           </div>
         </div>
-      </div>
 
-      {visible.length === 0 ? (
-        <div className="text-center py-24">
-          <p className="text-gray-500 font-medium mb-3">No products match your search.</p>
-          <button
-            onClick={() => { setQuery(''); setCategory('all') }}
-            className="text-sm font-semibold underline hover:text-black"
-          >
-            Clear filters
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {visible.map((p) => {
+        {visible.length === 0 ? (
+          <div className="text-center py-24">
+            <p className="text-gray-500 font-medium mb-3">No products match your search.</p>
+            <button
+              onClick={() => { setQuery(''); setCategory('all') }}
+              className="text-sm font-semibold underline hover:text-black"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {visible.map((p) => {
             const visual = p.image ? { photo: p.image } : fallbackVisual(p.category)
 
             return (
@@ -201,8 +221,9 @@ export function MarketplaceGrid({ products }: { products: GridProduct[] }) {
               </div>
             )
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -68,9 +68,12 @@ function VariantEditor({ variants, onChange }: { variants: string | null; onChan
   )
 }
 
+type Category = { id: string; name: string }
+
 export default function StorePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState<Category[]>([])
 
   const load = async () => {
     const res = await fetch('/api/store-products')
@@ -79,7 +82,13 @@ export default function StorePage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  const loadCategories = async () => {
+    const res = await fetch('/api/store-categories')
+    const data = await res.json()
+    if (data.categories) setCategories(data.categories)
+  }
+
+  useEffect(() => { load(); loadCategories() }, [])
 
   const addProduct = async () => {
     const res = await fetch('/api/store-products', {
@@ -182,12 +191,17 @@ export default function StorePage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input
+                <select
                   value={p.category || ''}
-                  onChange={(e) => updateProduct(p.id, { category: e.target.value })}
-                  placeholder="Category"
+                  onChange={(e) => updateProduct(p.id, { category: e.target.value || null })}
                   className="text-sm px-3 py-2 rounded-lg bg-gray-50 outline-none"
-                />
+                >
+                  <option value="">No category</option>
+                  {p.category && !categories.some((c) => c.name === p.category) && (
+                    <option value={p.category}>{p.category}</option>
+                  )}
+                  {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
                 <select
                   value={p.availability}
                   onChange={(e) => updateProduct(p.id, { availability: e.target.value })}

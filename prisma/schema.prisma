@@ -65,6 +65,8 @@ model User {
   orders              Order[]
   notifications       Notification[]
   subscriptionPayments SubscriptionPayment[]
+  categories          Category[]
+  supportMessages     SupportMessage[]
 }
 
 // status: unassigned | active | deactivated
@@ -215,6 +217,34 @@ model Product {
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
   orderItems         OrderItem[]
+}
+
+// scope: marketplace (admin-managed TapConnect Product catalog, userId is null) |
+//        store (a single user's own StoreProduct catalog, scoped to that userId)
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  scope     String   @default("marketplace")
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([scope, userId, name])
+}
+
+// A flat per-user support thread — one conversation per user, admin replies land
+// in the same thread. sender: user | admin. read is interpreted relative to the
+// OTHER party: a 'user' message's read flag means "seen by admin"; an 'admin'
+// message's read flag means "seen by the user".
+model SupportMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender    String   @default("user")
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model DeliveryZone {
