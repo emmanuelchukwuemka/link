@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findOne, insert } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { notify } from '@/lib/notify'
+import type { User, Lead } from '@/lib/types'
 
 // Authenticated: list leads for the current profile owner
 export async function GET() {
   const authData = await getCurrentUser()
   if (!authData) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  const leads = await prisma.lead.findMany({
-    where: { ownerId: authData.userId },
-    orderBy: { createdAt: 'desc' },
-  })
+  const leads = await findMany<Lead>('Lead', { where: { ownerId: authData.userId }, orderBy: '`createdAt` DESC' })
 
   return NextResponse.json({ leads })
 }
@@ -25,24 +23,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
-    const owner = await prisma.user.findUnique({ where: { username }, select: { id: true, leadFormEnabled: true } })
+    const owner = await findOne<User>('User', { username })
     if (!owner || !owner.leadFormEnabled) {
       return NextResponse.json({ error: 'Lead form is not available for this profile' }, { status: 404 })
     }
 
-    const lead = await prisma.lead.create({
-      data: {
-        ownerId: owner.id,
-        name: String(name).slice(0, 200),
-        phone: phone ? String(phone).slice(0, 50) : null,
-        email: email ? String(email).slice(0, 200) : null,
-        message: message ? String(message).slice(0, 2000) : null,
-      }
+    const lead = await insert<Lead>('Lead', {
+      ownerId: owner.id,
+      name: String(name).slice(0, 200),
+      phone: phone ? String(phone).slice(0, 50) : null,
+      email: email ? String(email).slice(0, 200) : null,
+      message: message ? String(message).slice(0, 2000) : null,
     })
 
-    await prisma.analyticsEvent.create({
-      data: { userId: owner.id, type: 'LEAD_CREATED' }
-    }).catch(() => {})
+    await insert('AnalyticsEvent', { userId: owner.id, type: 'LEAD_CREATED' }).catch(() => {})
 
     await notify(owner.id, {
       type: 'LEAD_RECEIVED',

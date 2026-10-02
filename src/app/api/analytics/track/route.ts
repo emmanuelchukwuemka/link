@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, insert } from '@/lib/db'
+import type { User } from '@/lib/types'
 
 const ALLOWED_TYPES = new Set([
   'PROFILE_VIEW', 'NFC_TAP', 'QR_SCAN', 'CONTACT_SAVE', 'PHONE_CLICK',
@@ -16,17 +17,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid event' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { username }, select: { id: true } })
+    const user = await findOne<User>('User', { username })
     if (!user) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    await prisma.analyticsEvent.create({
-      data: {
-        userId: user.id,
-        type,
-        meta: meta ? JSON.stringify(meta).slice(0, 2000) : null,
-      }
+    await insert('AnalyticsEvent', {
+      userId: user.id,
+      type,
+      meta: meta ? JSON.stringify(meta).slice(0, 2000) : null,
     })
 
     return NextResponse.json({ ok: true }, { status: 201 })

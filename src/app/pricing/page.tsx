@@ -49,7 +49,7 @@ const BUSINESS_INCLUDED = [
   { icon: Building2, text: 'Centralized employee management & bulk onboarding' },
   { icon: BarChart3, text: 'Team-wide engagement analytics' },
   { icon: MessageSquareText, text: 'Shared leads dashboard across your team' },
-  { icon: Link2, text: 'Bulk NFC card assignment' },
+  { icon: Link2, text: 'Bulk Digital Card assignment' },
 ]
 
 const BUSINESS_ORDER: BusinessPlanName[] = ['tier10', 'tier25', 'tier50', 'tier100', 'enterprise']
@@ -57,8 +57,8 @@ const RECOMMENDED_TIER: BusinessPlanName = 'tier25'
 
 const FAQS = [
   {
-    q: 'Do I need to buy an NFC card separately?',
-    a: 'Yes. Your plan covers your digital profile software — templates, links, store, analytics and so on. NFC cards and wristbands are physical products you order separately from our shop, then connect to your profile.',
+    q: 'Do I need to buy a TapConnect Digital Card separately?',
+    a: 'Yes. Your plan covers your digital profile software — templates, links, store, analytics and so on. The TapConnect Digital Card (powered by NFC + QR) is a physical product you order separately from our shop, then connect to your profile.',
   },
   {
     q: 'What happens if my Pro subscription expires?',

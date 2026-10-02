@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany } from '@/lib/db'
+import { attachOrderItems, attachPayments } from '@/lib/orders'
 import { requireRole } from '@/lib/auth'
+import type { Order } from '@/lib/types'
 
 export async function GET() {
   const admin = await requireRole('admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const orders = await prisma.order.findMany({
-    include: { items: { include: { product: true } }, payments: true },
-    orderBy: { createdAt: 'desc' },
-  })
+  const orderRows = await findMany<Order>('Order', { orderBy: '`createdAt` DESC' })
+  const withItems = await attachOrderItems(orderRows)
+  const orders = await attachPayments(withItems)
 
   return NextResponse.json({ orders })
 }

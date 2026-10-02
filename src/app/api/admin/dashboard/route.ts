@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { User, Order, OrderItem, Product } from '@/lib/types'
+
+async function countRows(sql: string, params: unknown[]): Promise<number> {
+  const rows = await query<{ c: number }>(sql, params)
+  return Number(rows[0]?.c ?? 0)
+}
+async function sumRows(sql: string, params: unknown[]): Promise<number> {
+  const rows = await query<{ s: number | null }>(sql, params)
+  return Number(rows[0]?.s ?? 0)
+}
 
 function dayKey(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -44,67 +54,78 @@ export async function GET() {
 
     const [
       totalUsers, totalBusinesses, totalEmployees, totalOrdersPaid,
-      cardsSoldAgg, revenueOrdersAgg, revenueSubsAgg,
+      cardsSoldSum, revenueOrdersSum, revenueSubsSum,
       usersCurr, usersPrev, businessesCurr, businessesPrev, employeesCurr, employeesPrev,
-      ordersCurr, ordersPrev, cardsCurrAgg, cardsPrevAgg,
-      revenueOrdersCurrAgg, revenueOrdersPrevAgg, revenueSubsCurrAgg, revenueSubsPrevAgg,
+      ordersCurr, ordersPrev, cardsCurrSum, cardsPrevSum,
+      revenueOrdersCurrSum, revenueOrdersPrevSum, revenueSubsCurrSum, revenueSubsPrevSum,
       usersLast7, businessesLast7, ordersLast7, cardItemsLast7, paymentsLast7, subsLast7,
       paymentsLast30, subsLast30,
-      recentUsers, recentOrders, paidOrderItems,
+      recentUsers, recentOrderRows, paidOrderItemRows,
       proUsers, paidBusinesses, orderStatusCounts, eventCounts,
     ] = await Promise.all([
-      prisma.user.count(),
-      prisma.business.count(),
-      prisma.user.count({ where: { accountType: 'employee' } }),
-      prisma.order.count({ where: { paymentStatus: 'paid' } }),
-      prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { paymentStatus: 'paid' } } }),
-      prisma.order.aggregate({ _sum: { total: true }, where: { paymentStatus: 'paid' } }),
-      prisma.subscriptionPayment.aggregate({ _sum: { amount: true }, where: { status: 'success' } }),
+      countRows('SELECT COUNT(*) as c FROM `User`', []),
+      countRows('SELECT COUNT(*) as c FROM `Business`', []),
+      countRows('SELECT COUNT(*) as c FROM `User` WHERE `accountType` = ?', ['employee']),
+      countRows('SELECT COUNT(*) as c FROM `Order` WHERE `paymentStatus` = ?', ['paid']),
+      sumRows('SELECT SUM(oi.`quantity`) as s FROM `OrderItem` oi JOIN `Order` o ON o.`id` = oi.`orderId` WHERE o.`paymentStatus` = ?', ['paid']),
+      sumRows('SELECT SUM(`total`) as s FROM `Order` WHERE `paymentStatus` = ?', ['paid']),
+      sumRows('SELECT SUM(`amount`) as s FROM `SubscriptionPayment` WHERE `status` = ?', ['success']),
 
-      prisma.user.count({ where: { createdAt: { gte: new Date(d30) } } }),
-      prisma.user.count({ where: { createdAt: { gte: new Date(d60), lt: new Date(d30) } } }),
-      prisma.business.count({ where: { createdAt: { gte: new Date(d30) } } }),
-      prisma.business.count({ where: { createdAt: { gte: new Date(d60), lt: new Date(d30) } } }),
-      prisma.user.count({ where: { accountType: 'employee', createdAt: { gte: new Date(d30) } } }),
-      prisma.user.count({ where: { accountType: 'employee', createdAt: { gte: new Date(d60), lt: new Date(d30) } } }),
-      prisma.order.count({ where: { paymentStatus: 'paid', createdAt: { gte: new Date(d30) } } }),
-      prisma.order.count({ where: { paymentStatus: 'paid', createdAt: { gte: new Date(d60), lt: new Date(d30) } } }),
-      prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { paymentStatus: 'paid', createdAt: { gte: new Date(d30) } } } }),
-      prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { paymentStatus: 'paid', createdAt: { gte: new Date(d60), lt: new Date(d30) } } } }),
-      prisma.order.aggregate({ _sum: { total: true }, where: { paymentStatus: 'paid', createdAt: { gte: new Date(d30) } } }),
-      prisma.order.aggregate({ _sum: { total: true }, where: { paymentStatus: 'paid', createdAt: { gte: new Date(d60), lt: new Date(d30) } } }),
-      prisma.subscriptionPayment.aggregate({ _sum: { amount: true }, where: { status: 'success', createdAt: { gte: new Date(d30) } } }),
-      prisma.subscriptionPayment.aggregate({ _sum: { amount: true }, where: { status: 'success', createdAt: { gte: new Date(d60), lt: new Date(d30) } } }),
+      countRows('SELECT COUNT(*) as c FROM `User` WHERE `createdAt` >= ?', [new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `User` WHERE `createdAt` >= ? AND `createdAt` < ?', [new Date(d60), new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `Business` WHERE `createdAt` >= ?', [new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `Business` WHERE `createdAt` >= ? AND `createdAt` < ?', [new Date(d60), new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `User` WHERE `accountType` = ? AND `createdAt` >= ?', ['employee', new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `User` WHERE `accountType` = ? AND `createdAt` >= ? AND `createdAt` < ?', ['employee', new Date(d60), new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `Order` WHERE `paymentStatus` = ? AND `createdAt` >= ?', ['paid', new Date(d30)]),
+      countRows('SELECT COUNT(*) as c FROM `Order` WHERE `paymentStatus` = ? AND `createdAt` >= ? AND `createdAt` < ?', ['paid', new Date(d60), new Date(d30)]),
+      sumRows('SELECT SUM(oi.`quantity`) as s FROM `OrderItem` oi JOIN `Order` o ON o.`id` = oi.`orderId` WHERE o.`paymentStatus` = ? AND o.`createdAt` >= ?', ['paid', new Date(d30)]),
+      sumRows('SELECT SUM(oi.`quantity`) as s FROM `OrderItem` oi JOIN `Order` o ON o.`id` = oi.`orderId` WHERE o.`paymentStatus` = ? AND o.`createdAt` >= ? AND o.`createdAt` < ?', ['paid', new Date(d60), new Date(d30)]),
+      sumRows('SELECT SUM(`total`) as s FROM `Order` WHERE `paymentStatus` = ? AND `createdAt` >= ?', ['paid', new Date(d30)]),
+      sumRows('SELECT SUM(`total`) as s FROM `Order` WHERE `paymentStatus` = ? AND `createdAt` >= ? AND `createdAt` < ?', ['paid', new Date(d60), new Date(d30)]),
+      sumRows('SELECT SUM(`amount`) as s FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ?', ['success', new Date(d30)]),
+      sumRows('SELECT SUM(`amount`) as s FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ? AND `createdAt` < ?', ['success', new Date(d60), new Date(d30)]),
 
-      prisma.user.findMany({ where: { createdAt: { gte: new Date(d7) } }, select: { createdAt: true, accountType: true } }),
-      prisma.business.findMany({ where: { createdAt: { gte: new Date(d7) } }, select: { createdAt: true } }),
-      prisma.order.findMany({ where: { paymentStatus: 'paid', createdAt: { gte: new Date(d7) } }, select: { createdAt: true } }),
-      prisma.orderItem.findMany({ where: { order: { paymentStatus: 'paid', createdAt: { gte: new Date(d7) } } }, select: { quantity: true, order: { select: { createdAt: true } } } }),
-      prisma.payment.findMany({ where: { status: 'success', createdAt: { gte: new Date(d7) } }, select: { amount: true, createdAt: true } }),
-      prisma.subscriptionPayment.findMany({ where: { status: 'success', createdAt: { gte: new Date(d7) } }, select: { amount: true, createdAt: true } }),
+      query<{ createdAt: Date; accountType: string }>('SELECT `createdAt`, `accountType` FROM `User` WHERE `createdAt` >= ?', [new Date(d7)]),
+      query<{ createdAt: Date }>('SELECT `createdAt` FROM `Business` WHERE `createdAt` >= ?', [new Date(d7)]),
+      query<{ createdAt: Date }>('SELECT `createdAt` FROM `Order` WHERE `paymentStatus` = ? AND `createdAt` >= ?', ['paid', new Date(d7)]),
+      query<{ quantity: number; orderCreatedAt: Date }>(
+        'SELECT oi.`quantity` as quantity, o.`createdAt` as orderCreatedAt FROM `OrderItem` oi JOIN `Order` o ON o.`id` = oi.`orderId` WHERE o.`paymentStatus` = ? AND o.`createdAt` >= ?',
+        ['paid', new Date(d7)]
+      ),
+      query<{ amount: number; createdAt: Date }>('SELECT `amount`, `createdAt` FROM `Payment` WHERE `status` = ? AND `createdAt` >= ?', ['success', new Date(d7)]),
+      query<{ amount: number; createdAt: Date }>('SELECT `amount`, `createdAt` FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ?', ['success', new Date(d7)]),
 
-      prisma.payment.findMany({ where: { status: 'success', createdAt: { gte: new Date(d30) } }, select: { amount: true, createdAt: true } }),
-      prisma.subscriptionPayment.findMany({ where: { status: 'success', createdAt: { gte: new Date(d30) } }, select: { amount: true, createdAt: true } }),
+      query<{ amount: number; createdAt: Date }>('SELECT `amount`, `createdAt` FROM `Payment` WHERE `status` = ? AND `createdAt` >= ?', ['success', new Date(d30)]),
+      query<{ amount: number; createdAt: Date }>('SELECT `amount`, `createdAt` FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ?', ['success', new Date(d30)]),
 
-      prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, username: true, displayName: true, email: true, accountType: true, createdAt: true, isActive: true } }),
-      prisma.order.findMany({
-        orderBy: { createdAt: 'desc' }, take: 5,
-        select: { id: true, orderNumber: true, customerName: true, total: true, status: true, items: { select: { quantity: true, product: { select: { name: true } } } } },
-      }),
-      prisma.orderItem.findMany({
-        where: { order: { paymentStatus: 'paid' } },
-        select: { quantity: true, unitPrice: true, product: { select: { id: true, name: true, images: true } } },
-      }),
+      query<User>('SELECT * FROM `User` ORDER BY `createdAt` DESC LIMIT 5', []),
+      query<Order>('SELECT * FROM `Order` ORDER BY `createdAt` DESC LIMIT 5', []),
+      query<OrderItem>('SELECT oi.* FROM `OrderItem` oi JOIN `Order` o ON o.`id` = oi.`orderId` WHERE o.`paymentStatus` = ?', ['paid']),
 
-      prisma.user.findMany({ where: { plan: { not: 'free' } }, select: { planExpiresAt: true } }),
-      prisma.business.findMany({ where: { plan: { not: 'free' } }, select: { planExpiresAt: true } }),
-      prisma.order.groupBy({ by: ['status'], _count: { status: true } }),
-      prisma.analyticsEvent.groupBy({ by: ['type'], _count: { type: true } }),
+      query<{ planExpiresAt: Date | null }>('SELECT `planExpiresAt` FROM `User` WHERE `plan` != ?', ['free']),
+      query<{ planExpiresAt: Date | null }>('SELECT `planExpiresAt` FROM `Business` WHERE `plan` != ?', ['free']),
+      query<{ status: string; c: number }>('SELECT `status`, COUNT(*) as c FROM `Order` GROUP BY `status`', []),
+      query<{ type: string; c: number }>('SELECT `type`, COUNT(*) as c FROM `AnalyticsEvent` GROUP BY `type`', []),
     ])
 
-    const totalRevenue = (revenueOrdersAgg._sum.total || 0) + (revenueSubsAgg._sum.amount || 0)
-    const revenueCurr = (revenueOrdersCurrAgg._sum.total || 0) + (revenueSubsCurrAgg._sum.amount || 0)
-    const revenuePrev = (revenueOrdersPrevAgg._sum.total || 0) + (revenueSubsPrevAgg._sum.amount || 0)
+    // recentOrders/paidOrderItems need product names — batch-load separately
+    const recentOrderIds = recentOrderRows.map((o) => o.id)
+    const recentOrderItems = recentOrderIds.length
+      ? await query<OrderItem & { productName: string }>(
+          'SELECT oi.*, p.`name` as productName FROM `OrderItem` oi JOIN `Product` p ON p.`id` = oi.`productId` WHERE oi.`orderId` IN (?)',
+          [recentOrderIds]
+        )
+      : []
+    const productIds = [...new Set(paidOrderItemRows.map((i) => i.productId))]
+    const products = productIds.length ? await query<Product>('SELECT * FROM `Product` WHERE `id` IN (?)', [productIds]) : []
+    const productMapById = new Map(products.map((p) => [p.id, p]))
+    const paidOrderItems = paidOrderItemRows.map((i) => ({ ...i, product: productMapById.get(i.productId) }))
+    const recentOrders = recentOrderRows.map((o) => ({ ...o, items: recentOrderItems.filter((i) => i.orderId === o.id).map((i) => ({ quantity: i.quantity, product: { name: i.productName } })) }))
+
+    const totalRevenue = revenueOrdersSum + revenueSubsSum
+    const revenueCurr = revenueOrdersCurrSum + revenueSubsCurrSum
+    const revenuePrev = revenueOrdersPrevSum + revenueSubsPrevSum
 
     const userBuckets = emptyDayBuckets(now, 7)
     const businessBuckets = emptyDayBuckets(now, 7)
@@ -120,7 +141,7 @@ export async function GET() {
     }
     for (const b of businessesLast7) { const key = dayKey(b.createdAt); if (key in businessBuckets) businessBuckets[key]++ }
     for (const o of ordersLast7) { const key = dayKey(o.createdAt); if (key in orderBuckets) orderBuckets[key]++ }
-    for (const i of cardItemsLast7) { const key = dayKey(i.order.createdAt); if (key in cardBuckets) cardBuckets[key] += i.quantity }
+    for (const i of cardItemsLast7) { const key = dayKey(i.orderCreatedAt); if (key in cardBuckets) cardBuckets[key] += i.quantity }
     for (const p of paymentsLast7) { const key = dayKey(p.createdAt); if (key in revenueBuckets7) revenueBuckets7[key] += p.amount }
     for (const s of subsLast7) { const key = dayKey(s.createdAt); if (key in revenueBuckets7) revenueBuckets7[key] += s.amount }
 
@@ -134,6 +155,7 @@ export async function GET() {
 
     const productMap = new Map<string, { id: string; name: string; image: string | null; unitsSold: number; revenue: number }>()
     for (const item of paidOrderItems) {
+      if (!item.product) continue
       const existing = productMap.get(item.product.id)
       const images: string[] = item.product.images ? JSON.parse(item.product.images) : []
       const revenue = item.quantity * item.unitPrice
@@ -149,19 +171,20 @@ export async function GET() {
     let active = 0, expiringSoon = 0, expired = 0
     for (const p of [...proUsers, ...paidBusinesses]) {
       if (!p.planExpiresAt) { active++; continue }
-      if (p.planExpiresAt <= new Date()) expired++
-      else if (p.planExpiresAt <= d14Future) expiringSoon++
+      const expiresAt = new Date(p.planExpiresAt)
+      if (expiresAt <= new Date()) expired++
+      else if (expiresAt <= d14Future) expiringSoon++
       else active++
     }
 
     const orderStatusOverview = { pending: 0, processing: 0, shipped: 0, delivered: 0 }
     for (const row of orderStatusCounts) {
       const group = ORDER_STATUS_GROUPS[row.status]
-      if (group) orderStatusOverview[group] += row._count.status
+      if (group) orderStatusOverview[group] += Number(row.c)
     }
 
     const eventMap: Record<string, number> = {}
-    for (const e of eventCounts) eventMap[e.type] = e._count.type
+    for (const e of eventCounts) eventMap[e.type] = Number(e.c)
     const nfcTap = eventMap.NFC_TAP || 0
     const qrCode = eventMap.QR_SCAN || 0
     const website = Math.max((eventMap.PROFILE_VIEW || 0) - nfcTap - qrCode, 0)
@@ -172,7 +195,7 @@ export async function GET() {
         businesses: { value: totalBusinesses, change: pctChange(businessesCurr, businessesPrev), series: days7.map(d => businessBuckets[d]) },
         employees: { value: totalEmployees, change: pctChange(employeesCurr, employeesPrev), series: days7.map(d => employeeBuckets[d]) },
         orders: { value: totalOrdersPaid, change: pctChange(ordersCurr, ordersPrev), series: days7.map(d => orderBuckets[d]) },
-        cardsSold: { value: cardsSoldAgg._sum.quantity || 0, change: pctChange(cardsCurrAgg._sum.quantity || 0, cardsPrevAgg._sum.quantity || 0), series: days7.map(d => cardBuckets[d]) },
+        cardsSold: { value: cardsSoldSum, change: pctChange(cardsCurrSum, cardsPrevSum), series: days7.map(d => cardBuckets[d]) },
         revenue: { value: totalRevenue, change: pctChange(revenueCurr, revenuePrev), series: days7.map(d => revenueBuckets7[d]) },
       },
       revenueChart: { dates: days30, productSales: days30.map(d => productSalesBuckets30[d]), subscriptions: days30.map(d => subsBuckets30[d]) },

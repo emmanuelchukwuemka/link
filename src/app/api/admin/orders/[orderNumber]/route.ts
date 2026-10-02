@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, updateWhere } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { notify } from '@/lib/notify'
+import type { Order } from '@/lib/types'
 
 const VALID_STATUSES = [
   'order_placed', 'payment_confirmed', 'profile_setup_required', 'profile_completed',
@@ -22,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
   const { orderNumber } = await params
   const { status, courierName, trackingNumber } = await req.json()
 
-  const existing = await prisma.order.findUnique({ where: { orderNumber } })
+  const existing = await findOne<Order>('Order', { orderNumber })
   if (!existing) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
   const data: Record<string, unknown> = {}
@@ -43,9 +44,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
   if (courierName !== undefined) data.courierName = courierName
   if (trackingNumber !== undefined) data.trackingNumber = trackingNumber
 
-  const order = await prisma.order.update({ where: { orderNumber }, data })
+  await updateWhere('Order', { orderNumber }, data)
+  const order = await findOne<Order>('Order', { orderNumber })
 
-  if (status && order.userId) {
+  if (status && order?.userId) {
     const label = status.replace(/_/g, ' ')
     await notify(order.userId, {
       type: 'ORDER_STATUS_CHANGED',

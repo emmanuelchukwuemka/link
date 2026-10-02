@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { updateById } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { User } from '@/lib/types'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireRole('admin')
@@ -16,11 +17,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'You cannot suspend your own account' }, { status: 400 })
   }
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: { isActive },
-    select: { id: true, isActive: true },
-  })
+  const updatedUser = await updateById<User>('User', id, { isActive })
+  const user = updatedUser && { id: updatedUser.id, isActive: updatedUser.isActive }
 
   return NextResponse.json({ user })
 }

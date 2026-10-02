@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, findOne, query, insert, updateById, withTransaction } from '@/lib/db'
 import { requireRole, hashPassword } from '@/lib/auth'
+import type { Lead, User, Business } from '@/lib/types'
 
 function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -23,59 +24,53 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Business name is required' }, { status: 400 })
   }
 
-  const lead = await prisma.lead.findUnique({ where: { id } })
+  const lead = await findById<Lead>('Lead', id)
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
   if (!lead.email) return NextResponse.json({ error: 'This lead has no email on file, so an account cannot be created' }, { status: 400 })
 
-  const existing = await prisma.user.findFirst({ where: { OR: [{ email: lead.email }, { username }] } })
-  if (existing) return NextResponse.json({ error: 'A user with this email or username already exists' }, { status: 409 })
+  const existingRows = await query<User>('SELECT * FROM `User` WHERE `email` = ? OR `username` = ? LIMIT 1', [lead.email, username])
+  if (existingRows[0]) return NextResponse.json({ error: 'A user with this email or username already exists' }, { status: 409 })
 
   const hashedPassword = await hashPassword(password)
 
-  const account = await prisma.$transaction(async (tx) => {
+  const account = await withTransaction(async (tx) => {
     if (type === 'individual') {
-      const user = await tx.user.create({
-        data: {
-          email: lead.email!,
-          username,
-          password: hashedPassword,
-          displayName: lead.name,
-          phone: lead.phone || null,
-          accountType: 'individual',
-        },
-        select: { id: true, username: true, email: true, displayName: true, accountType: true },
-      })
-      return { user }
+      const created = await insert<User>(
+        'User',
+        { email: lead.email!, username, password: hashedPassword, displayName: lead.name, phone: lead.phone || null, accountType: 'individual' },
+        undefined,
+        tx
+      )
+      return { user: { id: created.id, username: created.username, email: created.email, displayName: created.displayName, accountType: created.accountType } }
     }
 
     const baseSlug = slugify(businessName) || 'business'
     let slug = baseSlug
     let suffix = 1
-    while (await tx.business.findUnique({ where: { slug } })) {
+    while (await findOne<Business>('Business', { slug }, tx)) {
       slug = `${baseSlug}-${suffix++}`
     }
-    const owner = await tx.user.create({
-      data: {
-        email: lead.email!,
-        username,
-        password: hashedPassword,
-        displayName: lead.name,
-        phone: lead.phone || null,
-        accountType: 'business_admin',
-      },
-    })
-    const business = await tx.business.create({
-      data: { name: businessName, slug, ownerId: owner.id, phone: lead.phone || null, email: lead.email },
-      select: { id: true, name: true, slug: true },
-    })
-    return { business, owner: { id: owner.id, username: owner.username, email: owner.email } }
+    const owner = await insert<User>(
+      'User',
+      { email: lead.email!, username, password: hashedPassword, displayName: lead.name, phone: lead.phone || null, accountType: 'business_admin' },
+      undefined,
+      tx
+    )
+    const createdBusiness = await insert<Business>(
+      'Business',
+      { name: businessName, slug, ownerId: owner.id, phone: lead.phone || null, email: lead.email },
+      undefined,
+      tx
+    )
+    return {
+      business: { id: createdBusiness.id, name: createdBusiness.name, slug: createdBusiness.slug },
+      owner: { id: owner.id, username: owner.username, email: owner.email },
+    }
   })
 
-  const updatedLead = await prisma.lead.update({
-    where: { id },
-    data: { status: 'converted' },
-    include: { owner: { select: { username: true, displayName: true } } },
-  })
+  const updatedLead = await updateById<Lead>('Lead', id, { status: 'converted' })
+  const leadOwner = updatedLead ? await findById<User>('User', updatedLead.ownerId) : null
+  const lead2 = updatedLead && { ...updatedLead, owner: leadOwner ? { username: leadOwner.username, displayName: leadOwner.displayName } : null }
 
-  return NextResponse.json({ lead: updatedLead, account }, { status: 201 })
+  return NextResponse.json({ lead: lead2, account }, { status: 201 })
 }

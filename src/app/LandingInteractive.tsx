@@ -2,8 +2,41 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ShoppingBag, Plus, Check, ChevronLeft, ChevronRight, Send, CheckCircle2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ShoppingBag, Plus, Check, ChevronLeft, ChevronRight, Send, CheckCircle2, ArrowRight } from 'lucide-react'
 import { addToCart, getCart, cartCount } from '@/lib/cart'
+
+// Primary purchase CTA on homepage product cards — adds to cart and goes
+// straight to checkout, skipping the product detail and cart-review pages
+// so a purchase takes one click from the homepage instead of several.
+export function BuyNowButton({
+  productId, name, slug, image, unitPrice, customizationPrice, color, className,
+}: {
+  productId: string
+  name: string
+  slug: string
+  image: string | null
+  unitPrice: number
+  customizationPrice: number
+  color?: string
+  className?: string
+}) {
+  const router = useRouter()
+
+  const handleBuyNow = () => {
+    addToCart({ productId, name, slug, image, unitPrice, color, customization: false, customizationPrice, quantity: 1 })
+    router.push('/checkout')
+  }
+
+  return (
+    <button
+      onClick={handleBuyNow}
+      className={className ?? 'w-full flex items-center justify-center gap-1.5 bg-black text-white rounded-full py-2.5 font-semibold text-sm hover:bg-[#111111] transition-colors'}
+    >
+      Get Yours <ArrowRight size={14} />
+    </button>
+  )
+}
 
 export function CartBadge({ invert = false }: { invert?: boolean }) {
   const [count, setCount] = useState(0)

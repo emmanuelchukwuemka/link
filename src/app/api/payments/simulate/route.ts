@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, updateWhere, withTransaction } from '@/lib/db'
 import { isPaystackConfigured } from '@/lib/paystack'
 import { notify } from '@/lib/notify'
+import type { Order } from '@/lib/types'
 
 // Dev-only stand-in for the Paystack callback, used while PAYSTACK_SECRET_KEY
 // is unset so the checkout -> profile-setup -> order pipeline stays testable.
@@ -12,19 +13,13 @@ export async function POST(req: NextRequest) {
   }
 
   const { orderNumber } = await req.json()
-  const order = await prisma.order.findUnique({ where: { orderNumber } })
+  const order = await findOne<Order>('Order', { orderNumber })
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-  await prisma.$transaction([
-    prisma.payment.update({
-      where: { reference: orderNumber },
-      data: { status: 'success', rawResponse: JSON.stringify({ simulated: true }) },
-    }),
-    prisma.order.update({
-      where: { id: order.id },
-      data: { paymentStatus: 'paid', status: 'profile_setup_required' },
-    }),
-  ])
+  await withTransaction(async (tx) => {
+    await updateWhere('Payment', { reference: orderNumber }, { status: 'success', rawResponse: JSON.stringify({ simulated: true }) }, tx)
+    await updateWhere('Order', { id: order.id }, { paymentStatus: 'paid', status: 'profile_setup_required' }, tx)
+  })
 
   if (order.userId) {
     await notify(order.userId, {

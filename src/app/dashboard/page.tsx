@@ -137,7 +137,7 @@ export default function DashboardOverviewPage() {
 
   const quickActions = [
     { name: 'Edit Profile', href: '/dashboard/appearance', icon: Pencil },
-    { name: 'Order NFC Card', href: '/dashboard/cards', icon: CreditCard },
+    { name: 'Order Digital Card', href: '/dashboard/cards', icon: CreditCard },
     { name: 'Add Product', href: '/dashboard/store', icon: ShoppingBag },
     { name: 'Manage Links', href: '/dashboard/links', icon: LinkIcon },
     { name: 'View Analytics', href: '/dashboard/analytics', icon: BarChart3 },

@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findById, insert } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { Lead, User } from '@/lib/types'
+
+async function withOwner<T extends { ownerId: string }>(leads: T[]) {
+  const ownerIds = [...new Set(leads.map((l) => l.ownerId))]
+  const owners = ownerIds.length ? await findMany<User>('User', { where: { id: ownerIds } }) : []
+  const ownerMap = new Map(owners.map((o) => [o.id, { username: o.username, displayName: o.displayName }]))
+  return leads.map((l) => ({ ...l, owner: ownerMap.get(l.ownerId) ?? null }))
+}
 
 export async function GET() {
   const admin = await requireRole('admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const leads = await prisma.lead.findMany({
-    include: { owner: { select: { username: true, displayName: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 500,
-  })
+  const leadRows = await findMany<Lead>('Lead', { orderBy: '`createdAt` DESC', limit: 500 })
+  const leads = await withOwner(leadRows)
 
   return NextResponse.json({ leads })
 }
@@ -25,21 +30,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Owner and name are required' }, { status: 400 })
   }
 
-  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true } })
+  const owner = await findById<User>('User', ownerId)
   if (!owner) return NextResponse.json({ error: 'Owner not found' }, { status: 404 })
 
-  const lead = await prisma.lead.create({
-    data: {
-      ownerId,
-      name,
-      email: email || null,
-      phone: phone || null,
-      message: message || null,
-      source: source || 'Other',
-      status: status || 'new',
-    },
-    include: { owner: { select: { username: true, displayName: true } } },
+  const createdLead = await insert<Lead>('Lead', {
+    ownerId,
+    name,
+    email: email || null,
+    phone: phone || null,
+    message: message || null,
+    source: source || 'Other',
+    status: status || 'new',
   })
+  const [lead] = await withOwner([createdLead])
 
   return NextResponse.json({ lead }, { status: 201 })
 }

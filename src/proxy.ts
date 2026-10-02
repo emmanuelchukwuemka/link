@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { findById } from '@/lib/db'
+import type { User } from '@/lib/types'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tapconnect-secret-key-change-in-production-2026'
 
@@ -24,14 +26,15 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith('/admin')) {
-    const meRes = await fetch(new URL('/api/auth/me', request.url), {
-      headers: { cookie: `auth-token=${token}` },
-    })
-    if (!meRes.ok) {
+    // Was a self-fetch to /api/auth/me using request.url as the base — behind
+    // Passenger's reverse proxy that URL's origin doesn't reliably resolve to
+    // a reachable address (ECONNREFUSED 127.0.0.1:3000). Query the DB
+    // directly instead, same as requireRole() does for API routes.
+    const user = await findById<User>('User', payload.userId)
+    if (!user || !user.isActive) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
-    const data = await meRes.json()
-    if (data.user?.accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }

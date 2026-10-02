@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateById } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { User } from '@/lib/types'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   const admin = await requireRole('admin')
@@ -13,17 +14,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ us
     return NextResponse.json({ error: 'plan must be free or pro' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { accountType: true } })
+  const user = await findById<User>('User', userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (user.accountType !== 'individual') {
     return NextResponse.json({ error: 'Only individual accounts can have a Pro subscription' }, { status: 400 })
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { plan, planExpiresAt: plan === 'free' ? null : planExpiresAt ? new Date(planExpiresAt) : null },
-    select: { id: true, username: true, displayName: true, email: true, plan: true, planExpiresAt: true },
+  const updatedRow = await updateById<User>('User', userId, {
+    plan,
+    planExpiresAt: plan === 'free' ? null : planExpiresAt ? new Date(planExpiresAt) : null,
   })
+  const updated = updatedRow && { id: updatedRow.id, username: updatedRow.username, displayName: updatedRow.displayName, email: updatedRow.email, plan: updatedRow.plan, planExpiresAt: updatedRow.planExpiresAt }
 
   return NextResponse.json({ user: updated })
 }

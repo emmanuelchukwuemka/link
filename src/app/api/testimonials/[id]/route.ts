@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateById, removeById } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { Testimonial } from '@/lib/types'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,15 +11,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params
     const { authorName, content, rating } = await req.json()
 
-    const existing = await prisma.testimonial.findUnique({ where: { id } })
+    const existing = await findById<Testimonial>('Testimonial', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const testimonial = await prisma.testimonial.update({
-      where: { id },
-      data: { authorName, content, rating }
-    })
+    const testimonial = await updateById<Testimonial>('Testimonial', id, { authorName, content, rating })
 
     return NextResponse.json({ testimonial })
   } catch {
@@ -33,12 +31,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
-    const existing = await prisma.testimonial.findUnique({ where: { id } })
+    const existing = await findById<Testimonial>('Testimonial', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    await prisma.testimonial.delete({ where: { id } })
+    await removeById('Testimonial', id)
 
     return NextResponse.json({ success: true })
   } catch {

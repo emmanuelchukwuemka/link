@@ -8,7 +8,7 @@ import { AuthHero } from '../AuthHero'
 
 const CHECKLIST = [
   { icon: User, label: 'Access your profile' },
-  { icon: CreditCard, label: 'Manage your NFC cards' },
+  { icon: CreditCard, label: 'Manage your Digital Cards' },
   { icon: BarChart3, label: 'View analytics and leads' },
   { icon: Store, label: 'Manage your products and services' },
   { icon: Sparkles, label: 'Stay connected and grow' },

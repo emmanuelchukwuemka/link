@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateById, removeById } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { StoreProduct } from '@/lib/types'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,23 +11,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params
     const { name, description, imageUrl, price, discountPrice, category, availability, variants } = await req.json()
 
-    const existing = await prisma.storeProduct.findUnique({ where: { id } })
+    const existing = await findById<StoreProduct>('StoreProduct', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const product = await prisma.storeProduct.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        imageUrl,
-        price: price !== undefined ? (typeof price === 'number' ? price : parseFloat(price) || 0) : undefined,
-        discountPrice: discountPrice !== undefined ? (discountPrice ? (typeof discountPrice === 'number' ? discountPrice : parseFloat(discountPrice)) : null) : undefined,
-        category,
-        availability,
-        variants,
-      }
+    const product = await updateById<StoreProduct>('StoreProduct', id, {
+      name,
+      description,
+      imageUrl,
+      price: price !== undefined ? (typeof price === 'number' ? price : parseFloat(price) || 0) : undefined,
+      discountPrice: discountPrice !== undefined ? (discountPrice ? (typeof discountPrice === 'number' ? discountPrice : parseFloat(discountPrice)) : null) : undefined,
+      category,
+      availability,
+      variants,
     })
 
     return NextResponse.json({ product })
@@ -42,12 +40,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
-    const existing = await prisma.storeProduct.findUnique({ where: { id } })
+    const existing = await findById<StoreProduct>('StoreProduct', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    await prisma.storeProduct.delete({ where: { id } })
+    await removeById('StoreProduct', id)
 
     return NextResponse.json({ success: true })
   } catch {

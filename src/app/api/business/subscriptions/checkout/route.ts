@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, insert } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { initializeTransaction, isPaystackConfigured } from '@/lib/paystack'
 import { BUSINESS_PLANS, BusinessPlanName } from '@/lib/subscription'
+import type { Business } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireRole('business_admin')
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const business = await prisma.business.findUnique({ where: { ownerId: admin.id } })
+    const business = await findOne<Business>('Business', { ownerId: admin.id })
     if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
 
     const { plan } = await req.json()
@@ -23,9 +24,7 @@ export async function POST(req: NextRequest) {
     if (!isPaystackConfigured()) {
       // Still record the pending intent so the dev-mode simulate route has
       // something to look up and confirm, exactly like the real flow would.
-      await prisma.subscriptionPayment.create({
-        data: { businessId: business.id, plan, amount: planConfig.priceNaira, reference, status: 'pending' },
-      })
+      await insert('SubscriptionPayment', { businessId: business.id, plan, amount: planConfig.priceNaira, reference, status: 'pending' })
       return NextResponse.json({ devMode: true, reference })
     }
 
@@ -37,9 +36,7 @@ export async function POST(req: NextRequest) {
       callbackUrl: `${origin}/api/business/subscriptions/verify`,
     })
 
-    await prisma.subscriptionPayment.create({
-      data: { businessId: business.id, plan, amount: planConfig.priceNaira, reference, status: 'pending' },
-    })
+    await insert('SubscriptionPayment', { businessId: business.id, plan, amount: planConfig.priceNaira, reference, status: 'pending' })
 
     return NextResponse.json({ authorizationUrl: tx.authorization_url })
   } catch (error) {

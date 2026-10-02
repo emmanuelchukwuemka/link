@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateById, removeById } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { PortfolioItem } from '@/lib/types'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,15 +11,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params
     const { title, description, imageUrl, videoUrl } = await req.json()
 
-    const existing = await prisma.portfolioItem.findUnique({ where: { id } })
+    const existing = await findById<PortfolioItem>('PortfolioItem', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const item = await prisma.portfolioItem.update({
-      where: { id },
-      data: { title, description, imageUrl, videoUrl }
-    })
+    const item = await updateById<PortfolioItem>('PortfolioItem', id, { title, description, imageUrl, videoUrl })
 
     return NextResponse.json({ item })
   } catch {
@@ -33,12 +31,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
-    const existing = await prisma.portfolioItem.findUnique({ where: { id } })
+    const existing = await findById<PortfolioItem>('PortfolioItem', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    await prisma.portfolioItem.delete({ where: { id } })
+    await removeById('PortfolioItem', id)
 
     return NextResponse.json({ success: true })
   } catch {

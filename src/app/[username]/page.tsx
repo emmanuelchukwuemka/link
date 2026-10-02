@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/prisma'
+import { findOne, findMany, findById, query, insert } from '@/lib/db'
+import type { User, Link as LinkRow, SocialLink, Service, PortfolioItem, Testimonial, StoreProduct, Business } from '@/lib/types'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -33,34 +34,32 @@ export default async function PublicProfilePage({
 }) {
   const { username } = await params
 
-  const user = await prisma.user.findUnique({
-    where: { username },
-    include: {
-      links: { where: { isActive: true }, orderBy: { position: 'asc' } },
-      socialLinks: { orderBy: { position: 'asc' } },
-      services: { orderBy: { position: 'asc' } },
-      portfolioItems: { orderBy: { position: 'asc' } },
-      testimonials: { orderBy: { position: 'asc' } },
-      products: { where: { availability: { not: 'hidden' } }, orderBy: { position: 'asc' } },
-      business: true,
-    }
-  })
+  const userRow = await findOne<User>('User', { username })
 
-  if (!user) {
+  if (!userRow) {
     notFound()
   }
 
+  const [links, socialLinks, services, portfolioItems, testimonials, products, business] = await Promise.all([
+    findMany<LinkRow>('Link', { where: { userId: userRow.id, isActive: true }, orderBy: '`position` ASC' }),
+    findMany<SocialLink>('SocialLink', { where: { userId: userRow.id }, orderBy: '`position` ASC' }),
+    findMany<Service>('Service', { where: { userId: userRow.id }, orderBy: '`position` ASC' }),
+    findMany<PortfolioItem>('PortfolioItem', { where: { userId: userRow.id }, orderBy: '`position` ASC' }),
+    findMany<Testimonial>('Testimonial', { where: { userId: userRow.id }, orderBy: '`position` ASC' }),
+    query<StoreProduct>('SELECT * FROM `StoreProduct` WHERE `userId` = ? AND `availability` != ? ORDER BY `position` ASC', [userRow.id, 'hidden']),
+    userRow.businessId ? findById<Business>('Business', userRow.businessId) : Promise.resolve(null),
+  ])
+  const user = { ...userRow, links, socialLinks, services, portfolioItems, testimonials, products, business }
+
   try {
-    await prisma.analyticsEvent.create({
-      data: { userId: user.id, type: 'PROFILE_VIEW' }
-    })
+    await insert('AnalyticsEvent', { userId: user.id, type: 'PROFILE_VIEW' })
   } catch (err) {
     console.error('Analytics error:', err)
   }
 
   const organization = user.business?.name
   const displayTitle = user.jobTitle && organization ? `${user.jobTitle} at ${organization}` : (user.jobTitle || organization)
-  const isPro = user.plan === 'pro' && (!user.planExpiresAt || user.planExpiresAt > new Date())
+  const isPro = user.plan === 'pro' && (!user.planExpiresAt || new Date(user.planExpiresAt) > new Date())
   const tmpl = getTemplate(user.template)
   const portfolioProjects = user.portfolioItems.filter((i) => i.type !== 'gallery')
   const galleryImages = user.portfolioItems.filter((i) => i.type === 'gallery')

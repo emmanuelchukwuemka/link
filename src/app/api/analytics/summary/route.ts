@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 
 function rangeStart(range: string | null): Date | undefined {
@@ -30,24 +30,23 @@ export async function GET(req: NextRequest) {
     const range = searchParams.get('range')
     const since = rangeStart(range)
 
-    const events = await prisma.analyticsEvent.groupBy({
-      by: ['type'],
-      where: {
-        userId: authData.userId,
-        ...(since ? { createdAt: { gte: since } } : {}),
-      },
-      _count: { type: true },
-    })
+    const events = since
+      ? await query<{ type: string; c: number }>(
+          'SELECT `type`, COUNT(*) as c FROM `AnalyticsEvent` WHERE `userId` = ? AND `createdAt` >= ? GROUP BY `type`',
+          [authData.userId, since]
+        )
+      : await query<{ type: string; c: number }>(
+          'SELECT `type`, COUNT(*) as c FROM `AnalyticsEvent` WHERE `userId` = ? GROUP BY `type`',
+          [authData.userId]
+        )
 
     const counts: Record<string, number> = {}
-    for (const e of events) counts[e.type] = e._count.type
+    for (const e of events) counts[e.type] = Number(e.c)
 
-    const leadCount = await prisma.lead.count({
-      where: {
-        ownerId: authData.userId,
-        ...(since ? { createdAt: { gte: since } } : {}),
-      }
-    })
+    const leadCountRows = since
+      ? await query<{ c: number }>('SELECT COUNT(*) as c FROM `Lead` WHERE `ownerId` = ? AND `createdAt` >= ?', [authData.userId, since])
+      : await query<{ c: number }>('SELECT COUNT(*) as c FROM `Lead` WHERE `ownerId` = ?', [authData.userId])
+    const leadCount = Number(leadCountRows[0]?.c ?? 0)
 
     const views = counts.PROFILE_VIEW || 0
     const clicks = ['CONTACT_SAVE', 'PHONE_CLICK', 'WHATSAPP_CLICK', 'EMAIL_CLICK', 'WEBSITE_CLICK', 'SOCIAL_CLICK']

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { BUSINESS_PLANS, BusinessPlanName } from '@/lib/subscription'
+
+async function countRows(sql: string, params: unknown[]): Promise<number> {
+  const rows = await query<{ c: number }>(sql, params)
+  return Number(rows[0]?.c ?? 0)
+}
 
 function dayKey(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -42,6 +47,7 @@ export async function GET(req: NextRequest) {
   const priorFrom = new Date(from.getTime() - periodMs - 1)
   const priorTo = new Date(from.getTime() - 1)
 
+  const bizTypes = ['business_admin', 'employee']
   const [
     totalUsers, businessUsersCount, totalLeads,
     newUsersThisPeriod, newUsersPriorPeriod,
@@ -52,29 +58,29 @@ export async function GET(req: NextRequest) {
     usersInRange, leadsInRange, paymentsInRange, subPaymentsInRange,
     leadSourcesInRange, usersBeforeRange,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { accountType: { in: ['business_admin', 'employee'] } } }),
-    prisma.lead.count(),
-    prisma.user.count({ where: { createdAt: { gte: from, lte: to } } }),
-    prisma.user.count({ where: { createdAt: { gte: priorFrom, lte: priorTo } } }),
-    prisma.user.count({ where: { accountType: { in: ['business_admin', 'employee'] }, createdAt: { gte: from, lte: to } } }),
-    prisma.user.count({ where: { accountType: { in: ['business_admin', 'employee'] }, createdAt: { gte: priorFrom, lte: priorTo } } }),
-    prisma.lead.count({ where: { createdAt: { gte: from, lte: to } } }),
-    prisma.lead.count({ where: { createdAt: { gte: priorFrom, lte: priorTo } } }),
-    prisma.subscriptionPayment.count({ where: { status: 'success', createdAt: { gte: from, lte: to } } }),
-    prisma.subscriptionPayment.count({ where: { status: 'success', createdAt: { gte: priorFrom, lte: priorTo } } }),
-    prisma.user.findMany({ where: { plan: { not: 'free' } }, select: { planExpiresAt: true } }),
-    prisma.business.findMany({ where: { plan: { not: 'free' } }, select: { plan: true, planExpiresAt: true } }),
-    prisma.user.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { createdAt: true, accountType: true } }),
-    prisma.lead.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { createdAt: true } }),
-    prisma.payment.findMany({ where: { status: 'success', createdAt: { gte: from, lte: to } }, select: { amount: true, createdAt: true } }),
-    prisma.subscriptionPayment.findMany({ where: { status: 'success', createdAt: { gte: from, lte: to } }, select: { amount: true, createdAt: true } }),
-    prisma.lead.groupBy({ by: ['source'], where: { createdAt: { gte: from, lte: to } }, _count: { source: true } }),
-    prisma.user.count({ where: { createdAt: { lt: from } } }),
+    countRows('SELECT COUNT(*) as c FROM `User`', []),
+    countRows('SELECT COUNT(*) as c FROM `User` WHERE `accountType` IN (?)', [bizTypes]),
+    countRows('SELECT COUNT(*) as c FROM `Lead`', []),
+    countRows('SELECT COUNT(*) as c FROM `User` WHERE `createdAt` >= ? AND `createdAt` <= ?', [from, to]),
+    countRows('SELECT COUNT(*) as c FROM `User` WHERE `createdAt` >= ? AND `createdAt` <= ?', [priorFrom, priorTo]),
+    countRows('SELECT COUNT(*) as c FROM `User` WHERE `accountType` IN (?) AND `createdAt` >= ? AND `createdAt` <= ?', [bizTypes, from, to]),
+    countRows('SELECT COUNT(*) as c FROM `User` WHERE `accountType` IN (?) AND `createdAt` >= ? AND `createdAt` <= ?', [bizTypes, priorFrom, priorTo]),
+    countRows('SELECT COUNT(*) as c FROM `Lead` WHERE `createdAt` >= ? AND `createdAt` <= ?', [from, to]),
+    countRows('SELECT COUNT(*) as c FROM `Lead` WHERE `createdAt` >= ? AND `createdAt` <= ?', [priorFrom, priorTo]),
+    countRows('SELECT COUNT(*) as c FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ? AND `createdAt` <= ?', ['success', from, to]),
+    countRows('SELECT COUNT(*) as c FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ? AND `createdAt` <= ?', ['success', priorFrom, priorTo]),
+    query<{ planExpiresAt: Date | null }>('SELECT `planExpiresAt` FROM `User` WHERE `plan` != ?', ['free']),
+    query<{ plan: string; planExpiresAt: Date | null }>('SELECT `plan`, `planExpiresAt` FROM `Business` WHERE `plan` != ?', ['free']),
+    query<{ createdAt: Date; accountType: string }>('SELECT `createdAt`, `accountType` FROM `User` WHERE `createdAt` >= ? AND `createdAt` <= ?', [from, to]),
+    query<{ createdAt: Date }>('SELECT `createdAt` FROM `Lead` WHERE `createdAt` >= ? AND `createdAt` <= ?', [from, to]),
+    query<{ amount: number; createdAt: Date }>('SELECT `amount`, `createdAt` FROM `Payment` WHERE `status` = ? AND `createdAt` >= ? AND `createdAt` <= ?', ['success', from, to]),
+    query<{ amount: number; createdAt: Date }>('SELECT `amount`, `createdAt` FROM `SubscriptionPayment` WHERE `status` = ? AND `createdAt` >= ? AND `createdAt` <= ?', ['success', from, to]),
+    query<{ source: string; c: number }>('SELECT `source`, COUNT(*) as c FROM `Lead` WHERE `createdAt` >= ? AND `createdAt` <= ? GROUP BY `source`', [from, to]),
+    countRows('SELECT COUNT(*) as c FROM `User` WHERE `createdAt` < ?', [from]),
   ])
 
-  const activeIndividualPro = proUsers.filter((u) => !u.planExpiresAt || u.planExpiresAt > now).length
-  const activeBusinesses = paidBusinesses.filter((b) => !b.planExpiresAt || b.planExpiresAt > now)
+  const activeIndividualPro = proUsers.filter((u) => !u.planExpiresAt || new Date(u.planExpiresAt) > now).length
+  const activeBusinesses = paidBusinesses.filter((b) => !b.planExpiresAt || new Date(b.planExpiresAt) > now)
   const activeSubscriptions = activeIndividualPro + activeBusinesses.length
 
   const days = eachDay(from, to)
@@ -109,7 +115,7 @@ export async function GET(req: NextRequest) {
   const cumulativeUsersSeries = days.map((d) => { cumulative += newUsersBuckets[d]; return cumulative })
 
   const topLeadSources = leadSourcesInRange
-    .map((row) => ({ label: row.source, value: row._count.source, color: SOURCE_COLORS[row.source] || '#6b7280' }))
+    .map((row) => ({ label: row.source, value: Number(row.c), color: SOURCE_COLORS[row.source] || '#6b7280' }))
     .sort((a, b) => b.value - a.value)
 
   const subscriptionPlans = [

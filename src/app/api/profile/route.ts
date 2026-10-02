@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateById } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { isProActive, FREE_TEMPLATE, FREE_FONT } from '@/lib/subscription'
+import type { User } from '@/lib/types'
 
 const ALLOWED_FIELDS = [
   'displayName', 'jobTitle', 'department', 'bio', 'aboutText', 'avatarUrl',
@@ -29,7 +30,7 @@ export async function PUT(req: NextRequest) {
       (updateData.bgType !== undefined && updateData.bgType !== 'solid')
 
     if (needsProCheck) {
-      const current = await prisma.user.findUnique({ where: { id: authData.userId }, select: { plan: true, planExpiresAt: true } })
+      const current = await findById<User>('User', authData.userId)
       const isPro = isProActive(current?.plan || 'free', current?.planExpiresAt || null)
       if (!isPro) {
         if (updateData.leadFormEnabled === true) {
@@ -47,10 +48,7 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    const user = await prisma.user.update({
-      where: { id: authData.userId },
-      data: updateData
-    })
+    const user = await updateById<User>('User', authData.userId, updateData)
 
     return NextResponse.json({ user })
   } catch {

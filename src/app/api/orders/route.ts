@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findOne, insert, withTransaction } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { generateOrderNumber } from '@/lib/orders'
 import { initializeTransaction, isPaystackConfigured } from '@/lib/paystack'
+import type { Product, DeliveryZone, Order, OrderItem } from '@/lib/types'
 
 type CartItemInput = {
   productId: string
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     // Server-side price computation only — never trust client-provided prices.
     const productIds = [...new Set(items.map(i => i.productId))]
-    const products = await prisma.product.findMany({ where: { id: { in: productIds } } })
+    const products = await findMany<Product>('Product', { where: { id: productIds } })
     const productMap = new Map(products.map(p => [p.id, p]))
 
     let subtotal = 0
@@ -57,57 +58,60 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    const zone = await prisma.deliveryZone.findFirst({
-      where: { name: { equals: city } },
-    })
-    const deliveryFee = zone?.fee ?? (await prisma.deliveryZone.findUnique({ where: { name: 'Other' } }))?.fee ?? 0
+    const zone = await findOne<DeliveryZone>('DeliveryZone', { name: city })
+    const deliveryFee = zone?.fee ?? (await findOne<DeliveryZone>('DeliveryZone', { name: 'Other' }))?.fee ?? 0
 
     const total = subtotal + deliveryFee
     const orderNumber = generateOrderNumber()
 
     const authData = await getCurrentUser()
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: authData?.userId,
-        customerName,
-        customerEmail,
-        customerPhone,
-        state,
-        city,
-        address,
-        deliveryInstructions,
-        deliveryFee,
-        subtotal,
-        total,
-        items: { create: orderItemsData },
-      },
-      include: { items: { include: { product: true } } },
+    const order = await withTransaction(async (tx) => {
+      const createdOrder = await insert<Order>(
+        'Order',
+        {
+          orderNumber,
+          userId: authData?.userId ?? null,
+          customerName,
+          customerEmail,
+          customerPhone,
+          state,
+          city,
+          address,
+          deliveryInstructions: deliveryInstructions ?? null,
+          deliveryFee,
+          subtotal,
+          total,
+        },
+        undefined,
+        tx
+      )
+      for (const item of orderItemsData) {
+        await insert('OrderItem', { ...item, orderId: createdOrder.id }, undefined, tx)
+      }
+      return createdOrder
     })
+    const orderItemRows = await findMany<OrderItem>('OrderItem', { where: { orderId: order.id } })
+    const orderWithItems = { ...order, items: orderItemRows.map((i) => ({ ...i, product: productMap.get(i.productId) })) }
 
     if (!isPaystackConfigured()) {
       // Dev fallback: no live Paystack keys configured yet. The order is created
       // and payment can be simulated so the rest of the pipeline is testable.
-      await prisma.payment.create({
-        data: { orderId: order.id, reference: orderNumber, amount: total, status: 'pending' },
-      })
-      return NextResponse.json({ order, devMode: true }, { status: 201 })
+      await insert('Payment', { orderId: order.id, reference: orderNumber, amount: total, status: 'pending' })
+      return NextResponse.json({ order: orderWithItems, devMode: true }, { status: 201 })
     }
 
     const origin = req.nextUrl.origin
-    const tx = await initializeTransaction({
+    const tx2 = await initializeTransaction({
       email: customerEmail,
       amountNaira: total,
       reference: orderNumber,
       callbackUrl: `${origin}/api/payments/verify`,
     })
 
-    await prisma.payment.create({
-      data: { orderId: order.id, reference: orderNumber, amount: total, status: 'pending' },
-    })
+    await insert('Payment', { orderId: order.id, reference: orderNumber, amount: total, status: 'pending' })
 
-    return NextResponse.json({ order, authorizationUrl: tx.authorization_url }, { status: 201 })
+    return NextResponse.json({ order: orderWithItems, authorizationUrl: tx2.authorization_url }, { status: 201 })
   } catch (error) {
     console.error('Order creation error:', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 })

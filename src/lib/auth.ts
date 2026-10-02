@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { cookies } from 'next/headers'
-import { prisma } from './prisma'
+import { findById } from './db'
+import type { User } from './types'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'linktree-clone-secret-key-2024'
 
@@ -34,10 +35,7 @@ export async function getCurrentUser() {
   const payload = verifyToken(token)
   if (!payload) return null
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: { isActive: true },
-  })
+  const user = await findById<User>('User', payload.userId)
   if (!user || !user.isActive) return null
 
   return payload
@@ -47,11 +45,8 @@ export async function requireRole(...roles: string[]) {
   const authData = await getCurrentUser()
   if (!authData) return null
 
-  const user = await prisma.user.findUnique({
-    where: { id: authData.userId },
-    select: { id: true, accountType: true, businessId: true, username: true, email: true },
-  })
+  const user = await findById<User>('User', authData.userId)
 
   if (!user || !roles.includes(user.accountType)) return null
-  return user
+  return { id: user.id, accountType: user.accountType, businessId: user.businessId, username: user.username, email: user.email }
 }

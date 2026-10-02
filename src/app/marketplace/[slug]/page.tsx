@@ -1,13 +1,15 @@
-import { prisma } from '@/lib/prisma'
+import { findOne } from '@/lib/db'
+import type { Product } from '@/lib/types'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProductActions from './ProductActions'
+import ProductGallery from './ProductGallery'
 import { ShopHeader } from '@/components/ShopHeader'
 import { fallbackVisual } from '@/lib/productVisual'
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const product = await prisma.product.findUnique({ where: { slug } })
+  const product = await findOne<Product>('Product', { slug })
 
   if (!product || product.availability === 'hidden') {
     notFound()
@@ -15,7 +17,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const colors: string[] = product.colors ? JSON.parse(product.colors) : []
   const images: string[] = product.images ? JSON.parse(product.images) : []
-  const visual = images[0] ? { photo: images[0] } : fallbackVisual(product.category)
+  const fallback = fallbackVisual(product.category)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,16 +26,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <Link href="/marketplace" className="text-sm font-semibold text-gray-500 hover:text-black">&larr; Back to marketplace</Link>
 
         <div className="grid md:grid-cols-2 gap-12 mt-6">
-          <div className="aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-3xl shadow-sm flex items-center justify-center overflow-hidden">
-            {'photo' in visual ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={visual.photo} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-white shadow-md flex items-center justify-center">
-                <visual.icon size={36} className="text-black/70" />
-              </div>
-            )}
-          </div>
+          <ProductGallery images={images} fallback={fallback} productName={product.name} />
 
           <div>
             <h1 className="text-4xl font-bold text-[#111111] mb-3">{product.name}</h1>

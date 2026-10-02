@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, updateWhere, findById } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { Card, User, Business } from '@/lib/types'
 
 // Platform admin: reassign/deactivate a card
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
@@ -10,7 +11,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
   const { code } = await params
   const body = await req.json()
 
-  const card = await prisma.card.findUnique({ where: { code } })
+  const card = await findOne<Card>('Card', { code })
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 })
 
   const data: Record<string, unknown> = {}
@@ -30,7 +31,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
     data.assignedAt = body.businessId ? new Date() : null
   }
 
-  const updated = await prisma.card.update({ where: { code }, data })
+  await updateWhere('Card', { code }, data)
+  const updated = await findById<Card>('Card', card.id)
   return NextResponse.json({ card: updated })
 }
 
@@ -39,13 +41,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { code } = await params
-  const card = await prisma.card.findUnique({
-    where: { code },
-    include: {
-      user: { select: { id: true, username: true, displayName: true } },
-      business: { select: { id: true, name: true } },
+  const card = await findOne<Card>('Card', { code })
+  if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+
+  const [user, business] = await Promise.all([
+    card.userId ? findById<User>('User', card.userId) : null,
+    card.businessId ? findById<Business>('Business', card.businessId) : null,
+  ])
+
+  return NextResponse.json({
+    card: {
+      ...card,
+      user: user ? { id: user.id, username: user.username, displayName: user.displayName } : null,
+      business: business ? { id: business.id, name: business.name } : null,
     },
   })
-  if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 })
-  return NextResponse.json({ card })
 }

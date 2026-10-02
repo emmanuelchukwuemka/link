@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findOne, query, insert, withTransaction } from '@/lib/db'
 import { requireRole, hashPassword } from '@/lib/auth'
+import type { Business, User } from '@/lib/types'
 
 function slugify(name: string): string {
   return name
@@ -14,10 +15,8 @@ export async function GET() {
   const admin = await requireRole('admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const businesses = await prisma.business.findMany({
-    select: { id: true, name: true, slug: true, plan: true },
-    orderBy: { name: 'asc' },
-  })
+  const rows = await findMany<Business>('Business', { orderBy: '`name` ASC' })
+  const businesses = rows.map((b) => ({ id: b.id, name: b.name, slug: b.slug, plan: b.plan }))
 
   return NextResponse.json({ businesses })
 }
@@ -33,31 +32,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business name, owner email, username and password are required' }, { status: 400 })
     }
 
-    const existingUser = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } })
-    if (existingUser) {
+    const existingRows = await query<User>('SELECT * FROM `User` WHERE `email` = ? OR `username` = ? LIMIT 1', [email, username])
+    if (existingRows[0]) {
       return NextResponse.json({ error: 'A user with this email or username already exists' }, { status: 409 })
     }
 
     const baseSlug = slugify(businessName) || 'business'
     let slug = baseSlug
     let suffix = 1
-    while (await prisma.business.findUnique({ where: { slug } })) {
+    while (await findOne<Business>('Business', { slug })) {
       slug = `${baseSlug}-${suffix++}`
     }
 
     const hashedPassword = await hashPassword(password)
-    const business = await prisma.$transaction(async (tx) => {
-      const owner = await tx.user.create({
-        data: {
-          email, username, password: hashedPassword,
-          displayName: displayName || username,
-          accountType: 'business_admin',
-        },
-      })
-      return tx.business.create({
-        data: { name: businessName, slug, ownerId: owner.id },
-        select: { id: true, name: true, slug: true },
-      })
+    const business = await withTransaction(async (tx) => {
+      const owner = await insert<User>(
+        'User',
+        { email, username, password: hashedPassword, displayName: displayName || username, accountType: 'business_admin' },
+        undefined,
+        tx
+      )
+      const created = await insert<Business>('Business', { name: businessName, slug, ownerId: owner.id }, undefined, tx)
+      return { id: created.id, name: created.name, slug: created.slug }
     })
 
     return NextResponse.json({ business }, { status: 201 })

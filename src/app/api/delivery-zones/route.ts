@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany } from '@/lib/db'
+import type { DeliveryZone } from '@/lib/types'
 
 export async function GET() {
-  const zones = await prisma.deliveryZone.findMany({ orderBy: { name: 'asc' } })
+  const zones = await findMany<DeliveryZone>('DeliveryZone', { orderBy: '`name` ASC' })
   return NextResponse.json({ zones })
 }

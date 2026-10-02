@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { prisma } from '@/lib/prisma'
+import { findOne, insert } from '@/lib/db'
 import { sendEmail } from '@/lib/notify'
+import type { User } from '@/lib/types'
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000 // 1 hour
 
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await findOne<User>('User', { email })
 
     let devResetUrl: string | undefined
 
@@ -20,9 +21,7 @@ export async function POST(req: NextRequest) {
     // endpoint can't be used to enumerate registered emails.
     if (user) {
       const token = crypto.randomBytes(32).toString('hex')
-      await prisma.passwordResetToken.create({
-        data: { userId: user.id, token, expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
-      })
+      await insert('PasswordResetToken', { userId: user.id, token, expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) })
 
       const resetUrl = `${req.nextUrl.origin}/reset-password?token=${token}`
       await sendEmail(email, 'Reset your TapConnect password', `Reset your password: ${resetUrl} (expires in 1 hour)`)

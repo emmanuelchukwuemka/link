@@ -1,4 +1,6 @@
-import { prisma } from './prisma'
+import nodemailer from 'nodemailer'
+import { insert, findOne } from './db'
+import type { User, Notification } from './types'
 
 type NotifyInput = {
   type: string
@@ -13,24 +15,57 @@ type NotifyInput = {
 // (Resend, SendGrid, WhatsApp Business API, etc.) when credentials exist.
 export async function notify(userId: string, input: NotifyInput) {
   try {
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: input.type,
-        title: input.title,
-        message: input.message,
-        link: input.link,
-      },
+    await insert('Notification', {
+      userId,
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      link: input.link ?? null,
     })
   } catch (err) {
     console.error('notify() failed:', err)
   }
 }
 
+let cachedTransporter: ReturnType<typeof nodemailer.createTransport> | null | undefined
+
+function getTransporter() {
+  if (cachedTransporter !== undefined) return cachedTransporter
+
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    cachedTransporter = null
+    return cachedTransporter
+  }
+
+  const port = Number(SMTP_PORT) || 587
+  cachedTransporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  })
+  return cachedTransporter
+}
+
 export async function sendEmail(to: string, subject: string, body: string) {
-  // No email provider configured yet. Logging keeps the trigger points real
-  // and testable without silently dropping the notification.
-  console.log(`[email:stub] to=${to} subject="${subject}" body="${body}"`)
+  const transporter = getTransporter()
+  if (!transporter) {
+    // No SMTP provider configured — log instead of silently dropping.
+    console.log(`[email:stub] to=${to} subject="${subject}" body="${body}"`)
+    return
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      text: body,
+    })
+  } catch (err) {
+    console.error('sendEmail() failed:', err)
+  }
 }
 
 export async function sendWhatsApp(to: string, message: string) {
@@ -42,19 +77,14 @@ export async function sendWhatsApp(to: string, message: string) {
 // creating one of each type while the previous one is still unread.
 export async function checkSubscriptionExpiry(userId: string) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true, planExpiresAt: true },
-    })
+    const user = await findOne<User>('User', { id: userId })
     if (!user || user.plan !== 'pro' || !user.planExpiresAt) return
 
     const now = new Date()
-    const daysLeft = (user.planExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    const daysLeft = (new Date(user.planExpiresAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
 
     if (daysLeft < 0) {
-      const existing = await prisma.notification.findFirst({
-        where: { userId, type: 'SUBSCRIPTION_EXPIRED', read: false },
-      })
+      const existing = await findOne<Notification>('Notification', { userId, type: 'SUBSCRIPTION_EXPIRED', read: false })
       if (!existing) {
         await notify(userId, {
           type: 'SUBSCRIPTION_EXPIRED',
@@ -64,14 +94,12 @@ export async function checkSubscriptionExpiry(userId: string) {
         })
       }
     } else if (daysLeft <= 7) {
-      const existing = await prisma.notification.findFirst({
-        where: { userId, type: 'SUBSCRIPTION_EXPIRING', read: false },
-      })
+      const existing = await findOne<Notification>('Notification', { userId, type: 'SUBSCRIPTION_EXPIRING', read: false })
       if (!existing) {
         await notify(userId, {
           type: 'SUBSCRIPTION_EXPIRING',
           title: 'Your Pro subscription is expiring soon',
-          message: `Renews/expires on ${user.planExpiresAt.toLocaleDateString()}.`,
+          message: `Renews/expires on ${new Date(user.planExpiresAt).toLocaleDateString()}.`,
           link: '/dashboard/subscription',
         })
       }

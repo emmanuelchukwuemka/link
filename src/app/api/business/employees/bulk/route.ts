@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, count, insert, updateWhere } from '@/lib/db'
 import { requireRole, hashPassword } from '@/lib/auth'
 import { businessEmployeeLimit } from '@/lib/subscription'
 import { parseCsv, generateTempPassword } from '@/lib/csv'
+import type { Business, User, Card } from '@/lib/types'
 
 function slugifyUsername(email: string, name: string): string {
   const base = (email.split('@')[0] || name).toLowerCase().replace(/[^a-z0-9]+/g, '') || 'employee'
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   const admin = await requireRole('business_admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const business = await prisma.business.findUnique({ where: { ownerId: admin.id } })
+  const business = await findOne<Business>('Business', { ownerId: admin.id })
   if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
 
   const { csv } = await req.json()
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
   }
 
   const dataRows = rows.slice(1)
-  const currentCount = await prisma.user.count({ where: { businessId: business.id } })
+  const currentCount = await count('User', { businessId: business.id })
   const limit = businessEmployeeLimit(business.plan)
   if (currentCount + dataRows.length > limit) {
     return NextResponse.json({
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } })
+    const existingUser = await findOne<User>('User', { email })
     if (existingUser) {
       skipped.push({ row: i + 2, reason: `Email ${email} already registered` })
       continue
@@ -81,27 +82,22 @@ export async function POST(req: NextRequest) {
 
     let username = slugifyUsername(email, displayName)
     let suffix = 1
-    while (await prisma.user.findUnique({ where: { username } })) {
+    while (await findOne<User>('User', { username })) {
       username = `${slugifyUsername(email, displayName)}${suffix++}`
     }
 
     const tempPassword = generateTempPassword()
-    const employee = await prisma.user.create({
-      data: {
-        email, username, password: await hashPassword(tempPassword),
-        displayName, phone, jobTitle, department, avatarUrl,
-        accountType: 'employee',
-        businessId: business.id,
-      },
+    const employee = await insert<User>('User', {
+      email, username, password: await hashPassword(tempPassword),
+      displayName, phone: phone ?? null, jobTitle: jobTitle ?? null, department: department ?? null, avatarUrl: avatarUrl ?? null,
+      accountType: 'employee',
+      businessId: business.id,
     })
 
     if (cardCode) {
-      const card = await prisma.card.findUnique({ where: { code: cardCode } })
+      const card = await findOne<Card>('Card', { code: cardCode })
       if (card && (card.businessId === business.id || (!card.businessId && !card.userId))) {
-        await prisma.card.update({
-          where: { code: cardCode },
-          data: { userId: employee.id, businessId: business.id, status: 'active', assignedAt: new Date() },
-        })
+        await updateWhere('Card', { code: cardCode }, { userId: employee.id, businessId: business.id, status: 'active', assignedAt: new Date() })
       }
     }
 

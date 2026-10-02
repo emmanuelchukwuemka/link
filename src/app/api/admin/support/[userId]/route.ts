@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, findMany, insert } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { notify } from '@/lib/notify'
+import type { User, SupportMessage } from '@/lib/types'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   const admin = await requireRole('admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { userId } = await params
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, username: true, displayName: true, avatarUrl: true, accountType: true },
-  })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  const userRow = await findById<User>('User', userId)
+  if (!userRow) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  const user = { id: userRow.id, username: userRow.username, displayName: userRow.displayName, avatarUrl: userRow.avatarUrl, accountType: userRow.accountType }
 
-  const messages = await prisma.supportMessage.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })
+  const messages = await findMany<SupportMessage>('SupportMessage', { where: { userId }, orderBy: '`createdAt` ASC' })
   return NextResponse.json({ user, messages })
 }
 
@@ -28,12 +27,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
     return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+  const user = await findById<User>('User', userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const message = await prisma.supportMessage.create({
-    data: { userId, sender: 'admin', body: body.trim() },
-  })
+  const message = await insert<SupportMessage>('SupportMessage', { userId, sender: 'admin', body: body.trim() })
 
   await notify(userId, {
     type: 'SUPPORT_REPLY',

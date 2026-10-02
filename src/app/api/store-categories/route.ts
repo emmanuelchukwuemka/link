@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
-import { prisma } from '@/lib/prisma'
+import { findMany, insert } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { Category } from '@/lib/types'
 
 export async function GET() {
   const authData = await getCurrentUser()
   if (!authData) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  const categories = await prisma.category.findMany({
-    where: { scope: 'store', userId: authData.userId },
-    orderBy: { position: 'asc' },
-  })
+  const categories = await findMany<Category>('Category', { where: { scope: 'store', userId: authData.userId }, orderBy: '`position` ASC' })
   return NextResponse.json({ categories })
 }
 
@@ -23,18 +20,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Category name is required' }, { status: 400 })
   }
 
-  const last = await prisma.category.findFirst({
-    where: { scope: 'store', userId: authData.userId },
-    orderBy: { position: 'desc' },
-  })
+  const [last] = await findMany<Category>('Category', { where: { scope: 'store', userId: authData.userId }, orderBy: '`position` DESC', limit: 1 })
 
   try {
-    const category = await prisma.category.create({
-      data: { name: name.trim(), scope: 'store', userId: authData.userId, position: last ? last.position + 1 : 0 },
+    const category = await insert<Category>('Category', {
+      name: name.trim(),
+      scope: 'store',
+      userId: authData.userId,
+      position: last ? last.position + 1 : 0,
     })
     return NextResponse.json({ category }, { status: 201 })
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+    if ((e as { code?: string }).code === 'ER_DUP_ENTRY') {
       return NextResponse.json({ error: 'That category already exists' }, { status: 409 })
     }
     throw e

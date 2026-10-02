@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, insert } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { generateUniqueCardCode } from '@/lib/cards'
+import type { Card, User, Business } from '@/lib/types'
 
 // Platform admin: list all cards, or generate new unassigned batches
 export async function GET(req: NextRequest) {
@@ -11,16 +12,24 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
 
-  const cards = await prisma.card.findMany({
-    where: status ? { status } : undefined,
-    include: {
-      user: { select: { id: true, username: true, displayName: true } },
-      business: { select: { id: true, name: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  const cards = await findMany<Card>('Card', { where: status ? { status } : undefined, orderBy: '`createdAt` DESC' })
 
-  return NextResponse.json({ cards })
+  const userIds = [...new Set(cards.map((c) => c.userId).filter((v): v is string => !!v))]
+  const businessIds = [...new Set(cards.map((c) => c.businessId).filter((v): v is string => !!v))]
+  const [users, businesses] = await Promise.all([
+    userIds.length ? findMany<User>('User', { where: { id: userIds } }) : Promise.resolve([]),
+    businessIds.length ? findMany<Business>('Business', { where: { id: businessIds } }) : Promise.resolve([]),
+  ])
+  const userMap = new Map(users.map((u) => [u.id, u]))
+  const businessMap = new Map(businesses.map((b) => [b.id, b]))
+
+  return NextResponse.json({
+    cards: cards.map((c) => ({
+      ...c,
+      user: c.userId && userMap.has(c.userId) ? { id: userMap.get(c.userId)!.id, username: userMap.get(c.userId)!.username, displayName: userMap.get(c.userId)!.displayName } : null,
+      business: c.businessId && businessMap.has(c.businessId) ? { id: businessMap.get(c.businessId)!.id, name: businessMap.get(c.businessId)!.name } : null,
+    })),
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -35,11 +44,7 @@ export async function POST(req: NextRequest) {
     codes.push(await generateUniqueCardCode())
   }
 
-  await prisma.card.createMany({
-    data: codes.map((code) => ({ code })),
-  })
-
-  const cards = await prisma.card.findMany({ where: { code: { in: codes } } })
+  const cards = await Promise.all(codes.map((code) => insert<Card>('Card', { code })))
 
   return NextResponse.json({ cards }, { status: 201 })
 }

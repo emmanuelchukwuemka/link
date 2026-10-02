@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, updateWhere } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { Business } from '@/lib/types'
 
 const ALLOWED_FIELDS = [
   'name', 'logoUrl', 'description', 'website', 'phone', 'whatsapp',
@@ -11,7 +12,7 @@ export async function GET() {
   const admin = await requireRole('business_admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const business = await prisma.business.findUnique({ where: { ownerId: admin.id } })
+  const business = await findOne<Business>('Business', { ownerId: admin.id })
   return NextResponse.json({ business })
 }
 
@@ -25,10 +26,8 @@ export async function PUT(req: NextRequest) {
     if (field in data) updateData[field] = data[field]
   }
 
-  const business = await prisma.business.update({
-    where: { ownerId: admin.id },
-    data: updateData,
-  })
+  await updateWhere('Business', { ownerId: admin.id }, updateData)
+  const business = await findOne<Business>('Business', { ownerId: admin.id })
 
   return NextResponse.json({ business })
 }

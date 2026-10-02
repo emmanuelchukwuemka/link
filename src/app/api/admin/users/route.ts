@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, query, insert } from '@/lib/db'
 import { requireRole, hashPassword } from '@/lib/auth'
+import type { User, Business } from '@/lib/types'
 
 export async function GET(req: NextRequest) {
   const admin = await requireRole('admin')
@@ -8,16 +9,21 @@ export async function GET(req: NextRequest) {
 
   const type = req.nextUrl.searchParams.get('type')
 
-  const users = await prisma.user.findMany({
-    where: type ? { accountType: type } : undefined,
-    select: {
-      id: true, username: true, email: true, displayName: true, accountType: true,
-      plan: true, planExpiresAt: true, businessId: true, createdAt: true, isActive: true,
-      business: { select: { name: true } },
-      ownedBusiness: { select: { name: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  const userRows = await findMany<User>('User', { where: type ? { accountType: type } : undefined, orderBy: '`createdAt` DESC' })
+  const businessIds = [...new Set(userRows.map((u) => u.businessId).filter((v): v is string => !!v))]
+  const [employerBusinesses, ownedBusinesses] = await Promise.all([
+    businessIds.length ? findMany<Business>('Business', { where: { id: businessIds } }) : Promise.resolve([]),
+    findMany<Business>('Business', { where: { ownerId: userRows.map((u) => u.id) } }),
+  ])
+  const employerMap = new Map(employerBusinesses.map((b) => [b.id, b]))
+  const ownedMap = new Map(ownedBusinesses.map((b) => [b.ownerId, b]))
+
+  const users = userRows.map((u) => ({
+    id: u.id, username: u.username, email: u.email, displayName: u.displayName, accountType: u.accountType,
+    plan: u.plan, planExpiresAt: u.planExpiresAt, businessId: u.businessId, createdAt: u.createdAt, isActive: u.isActive,
+    business: u.businessId && employerMap.has(u.businessId) ? { name: employerMap.get(u.businessId)!.name } : null,
+    ownedBusiness: ownedMap.has(u.id) ? { name: ownedMap.get(u.id)!.name } : null,
+  }))
 
   return NextResponse.json({ users })
 }
@@ -39,21 +45,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'businessId is required for employee accounts' }, { status: 400 })
     }
 
-    const existing = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } })
-    if (existing) {
+    const existingRows = await query<User>('SELECT * FROM `User` WHERE `email` = ? OR `username` = ? LIMIT 1', [email, username])
+    if (existingRows[0]) {
       return NextResponse.json({ error: 'A user with this email or username already exists' }, { status: 409 })
     }
 
     const hashedPassword = await hashPassword(password)
-    const user = await prisma.user.create({
-      data: {
-        email, username, password: hashedPassword,
-        displayName: displayName || username,
-        accountType,
-        businessId: accountType === 'employee' ? businessId : null,
-      },
-      select: { id: true, username: true, email: true, displayName: true, accountType: true },
+    const created = await insert<User>('User', {
+      email, username, password: hashedPassword,
+      displayName: displayName || username,
+      accountType,
+      businessId: accountType === 'employee' ? businessId : null,
     })
+    const user = { id: created.id, username: created.username, email: created.email, displayName: created.displayName, accountType: created.accountType }
 
     return NextResponse.json({ user }, { status: 201 })
   } catch (error) {

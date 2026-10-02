@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, updateWhere, withTransaction } from '@/lib/db'
 import { verifyTransaction } from '@/lib/paystack'
 import { notify } from '@/lib/notify'
+import type { Payment, Order } from '@/lib/types'
 
 // Paystack redirects the browser here after checkout. The frontend result is
 // never trusted — payment success is only recorded once verified server-side
@@ -15,24 +16,19 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await verifyTransaction(reference)
-    const payment = await prisma.payment.findUnique({ where: { reference } })
+    const payment = await findOne<Payment>('Payment', { reference })
 
     if (!payment) {
       return NextResponse.redirect(new URL('/marketplace', req.url))
     }
 
     if (result.status === 'success') {
-      const [, updatedOrder] = await prisma.$transaction([
-        prisma.payment.update({
-          where: { reference },
-          data: { status: 'success', rawResponse: JSON.stringify(result) },
-        }),
-        prisma.order.update({
-          where: { id: payment.orderId },
-          data: { paymentStatus: 'paid', status: 'profile_setup_required' },
-        }),
-      ])
-      if (updatedOrder.userId) {
+      const updatedOrder = await withTransaction(async (tx) => {
+        await updateWhere('Payment', { reference }, { status: 'success', rawResponse: JSON.stringify(result) }, tx)
+        await updateWhere('Order', { id: payment.orderId }, { paymentStatus: 'paid', status: 'profile_setup_required' }, tx)
+        return findOne<Order>('Order', { id: payment.orderId }, tx)
+      })
+      if (updatedOrder?.userId) {
         await notify(updatedOrder.userId, {
           type: 'ORDER_PAID',
           title: 'Payment confirmed',
@@ -41,17 +37,14 @@ export async function GET(req: NextRequest) {
         })
       }
     } else {
-      const failedPayment = await prisma.payment.update({
-        where: { reference },
-        data: { status: 'failed', rawResponse: JSON.stringify(result) },
-        include: { order: true },
-      })
-      if (failedPayment.order.userId) {
-        await notify(failedPayment.order.userId, {
+      await updateWhere('Payment', { reference }, { status: 'failed', rawResponse: JSON.stringify(result) })
+      const failedOrder = await findOne<Order>('Order', { id: payment.orderId })
+      if (failedOrder?.userId) {
+        await notify(failedOrder.userId, {
           type: 'PAYMENT_FAILED',
           title: 'Payment failed',
-          message: `We couldn't confirm payment for order #${failedPayment.order.orderNumber}. Please try again.`,
-          link: `/orders/${failedPayment.order.orderNumber}`,
+          message: `We couldn't confirm payment for order #${failedOrder.orderNumber}. Please try again.`,
+          link: `/orders/${failedOrder.orderNumber}`,
         })
       }
     }
@@ -59,8 +52,9 @@ export async function GET(req: NextRequest) {
     console.error('Payment verification error:', error)
   }
 
-  const order = await prisma.payment.findUnique({ where: { reference }, include: { order: true } })
-  const orderNumber = order?.order.orderNumber || reference
+  const paymentRow = await findOne<Payment>('Payment', { reference })
+  const orderRow = paymentRow ? await findOne<Order>('Order', { id: paymentRow.orderId }) : null
+  const orderNumber = orderRow?.orderNumber || reference
 
   return NextResponse.redirect(new URL(`/orders/${orderNumber}`, req.url))
 }

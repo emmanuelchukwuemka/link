@@ -1,63 +1,31 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, findMany, findOne } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { checkSubscriptionExpiry } from '@/lib/notify'
+import type { User, Link, SocialLink, Business } from '@/lib/types'
 
 export async function GET() {
   try {
     const authData = await getCurrentUser()
-    
+
     if (!authData) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: authData.userId },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        accountType: true,
-        displayName: true,
-        jobTitle: true,
-        department: true,
-        bio: true,
-        aboutText: true,
-        avatarUrl: true,
-        phone: true,
-        whatsapp: true,
-        website: true,
-        address: true,
-        businessHours: true,
-        leadFormEnabled: true,
-        theme: true,
-        template: true,
-        bgType: true,
-        bgColor: true,
-        bgGradient: true,
-        bgImage: true,
-        buttonStyle: true,
-        buttonSize: true,
-        buttonColor: true,
-        buttonTextColor: true,
-        fontFamily: true,
-        textColor: true,
-        plan: true,
-        planExpiresAt: true,
-        businessId: true,
-        links: {
-          orderBy: { position: 'asc' }
-        },
-        socialLinks: {
-          orderBy: { position: 'asc' }
-        },
-        ownedBusiness: true,
-      }
-    })
+    const userRow = await findById<User>('User', authData.userId)
 
-    if (!user) {
+    if (!userRow) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
+    const { password: _password, ...rest } = userRow
+    void _password
+    const [links, socialLinks, ownedBusiness] = await Promise.all([
+      findMany<Link>('Link', { where: { userId: userRow.id }, orderBy: '`position` ASC' }),
+      findMany<SocialLink>('SocialLink', { where: { userId: userRow.id }, orderBy: '`position` ASC' }),
+      findOne<Business>('Business', { ownerId: userRow.id }),
+    ])
+    const user = { ...rest, links, socialLinks, ownedBusiness }
 
     await checkSubscriptionExpiry(user.id)
 

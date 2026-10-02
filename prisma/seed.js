@@ -1,7 +1,23 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+// Seeds the marketplace Product catalog and delivery zones.
+// Plain JS + mysql2 directly (not the TS src/lib/db helper) since this runs
+// standalone via `node prisma/seed.js`, outside the Next.js/TS build.
+const mysql = require('mysql2/promise')
+const { v4: uuidv4 } = require('uuid')
+
+async function upsert(pool, table, where, data) {
+  const [rows] = await pool.query(`SELECT id FROM \`${table}\` WHERE ${Object.keys(where).map((k) => `\`${k}\` = ?`).join(' AND ')} LIMIT 1`, Object.values(where))
+  if (rows.length > 0) return
+  const row = { id: uuidv4(), ...where, ...data }
+  const keys = Object.keys(row)
+  await pool.query(
+    `INSERT INTO \`${table}\` (${keys.map((k) => `\`${k}\``).join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
+    keys.map((k) => row[k])
+  )
+}
 
 async function main() {
+  const pool = mysql.createPool({ uri: process.env.DATABASE_URL })
+
   const products = [
     {
       name: 'TapConnect Mini',
@@ -36,12 +52,8 @@ async function main() {
     },
   ]
 
-  for (const p of products) {
-    await prisma.product.upsert({
-      where: { slug: p.slug },
-      update: {},
-      create: p,
-    })
+  for (const { slug, ...rest } of products) {
+    await upsert(pool, 'Product', { slug }, rest)
   }
 
   const zones = [
@@ -53,20 +65,15 @@ async function main() {
     { name: 'Other', fee: 4500 },
   ]
 
-  for (const z of zones) {
-    await prisma.deliveryZone.upsert({
-      where: { name: z.name },
-      update: {},
-      create: z,
-    })
+  for (const { name, ...rest } of zones) {
+    await upsert(pool, 'DeliveryZone', { name }, rest)
   }
 
   console.log('Seeded products and delivery zones.')
+  await pool.end()
 }
 
-main()
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(() => prisma.$disconnect())
+main().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

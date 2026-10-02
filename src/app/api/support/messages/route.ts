@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findById, count, insert } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { notify } from '@/lib/notify'
+import type { SupportMessage, User } from '@/lib/types'
 
 export async function GET() {
   const authData = await getCurrentUser()
   if (!authData) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
   const [messages, unreadCount] = await Promise.all([
-    prisma.supportMessage.findMany({ where: { userId: authData.userId }, orderBy: { createdAt: 'asc' } }),
-    prisma.supportMessage.count({ where: { userId: authData.userId, sender: 'admin', read: false } }),
+    findMany<SupportMessage>('SupportMessage', { where: { userId: authData.userId }, orderBy: '`createdAt` ASC' }),
+    count('SupportMessage', { userId: authData.userId, sender: 'admin', read: false }),
   ])
 
   return NextResponse.json({ messages, unreadCount })
@@ -24,12 +25,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 })
   }
 
-  const message = await prisma.supportMessage.create({
-    data: { userId: authData.userId, sender: 'user', body: body.trim() },
-  })
+  const message = await insert<SupportMessage>('SupportMessage', { userId: authData.userId, sender: 'user', body: body.trim() })
 
-  const user = await prisma.user.findUnique({ where: { id: authData.userId }, select: { displayName: true, username: true } })
-  const admins = await prisma.user.findMany({ where: { accountType: 'admin' }, select: { id: true } })
+  const user = await findById<User>('User', authData.userId)
+  const admins = await findMany<User>('User', { where: { accountType: 'admin' } })
   await Promise.all(admins.map((a) => notify(a.id, {
     type: 'SUPPORT_MESSAGE',
     title: `New support message from ${user?.displayName || user?.username}`,

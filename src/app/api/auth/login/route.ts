@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne } from '@/lib/db'
 import { verifyPassword, generateToken } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import type { User } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await findOne<User>('User', { email })
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, updateWhere } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { Category } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
   const admin = await requireRole('admin')
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
   const normalizedParentId: string | null = parentId || null
 
-  const categories = await prisma.category.findMany({ where: { id: { in: orderedIds }, scope: 'marketplace' } })
+  const categories = await findMany<Category>('Category', { where: { id: orderedIds, scope: 'marketplace' } })
   const allBelongToParent = categories.length === orderedIds.length
     && categories.every((c) => (c.parentId || null) === normalizedParentId)
   if (!allBelongToParent) {
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   await Promise.all(orderedIds.map((id: string, index: number) =>
-    prisma.category.update({ where: { id }, data: { position: index } })
+    updateWhere('Category', { id }, { position: index })
   ))
 
   return NextResponse.json({ success: true })

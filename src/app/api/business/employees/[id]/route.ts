@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, findById, updateWhere, withTransaction } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { Business, User } from '@/lib/types'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireRole('business_admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const business = await prisma.business.findUnique({ where: { ownerId: admin.id } })
+  const business = await findOne<Business>('Business', { ownerId: admin.id })
   if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
 
   const { id } = await params
-  const employee = await prisma.user.findUnique({ where: { id } })
+  const employee = await findById<User>('User', id)
   if (!employee || employee.businessId !== business.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const { displayName, jobTitle, department } = await req.json()
-  const updated = await prisma.user.update({
-    where: { id },
-    data: { displayName, jobTitle, department },
-    select: { id: true, username: true, displayName: true, jobTitle: true, department: true },
-  })
+  await updateWhere('User', { id }, { displayName, jobTitle, department })
+  const updatedUser = await findById<User>('User', id)
+  const updated = updatedUser && { id: updatedUser.id, username: updatedUser.username, displayName: updatedUser.displayName, jobTitle: updatedUser.jobTitle, department: updatedUser.department }
 
   return NextResponse.json({ employee: updated })
 }
@@ -30,19 +29,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const admin = await requireRole('business_admin')
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const business = await prisma.business.findUnique({ where: { ownerId: admin.id } })
+  const business = await findOne<Business>('Business', { ownerId: admin.id })
   if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
 
   const { id } = await params
-  const employee = await prisma.user.findUnique({ where: { id } })
+  const employee = await findById<User>('User', id)
   if (!employee || employee.businessId !== business.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  await prisma.$transaction([
-    prisma.user.update({ where: { id }, data: { businessId: null, accountType: 'individual' } }),
-    prisma.card.updateMany({ where: { userId: id, businessId: business.id }, data: { userId: null, status: 'unassigned', assignedAt: null } }),
-  ])
+  await withTransaction(async (tx) => {
+    await updateWhere('User', { id }, { businessId: null, accountType: 'individual' }, tx)
+    await updateWhere('Card', { userId: id, businessId: business.id }, { userId: null, status: 'unassigned', assignedAt: null }, tx)
+  })
 
   return NextResponse.json({ success: true })
 }

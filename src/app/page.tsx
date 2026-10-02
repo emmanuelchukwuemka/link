@@ -7,14 +7,15 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Reveal } from '@/components/Reveal'
-import { prisma } from '@/lib/prisma'
+import { query } from '@/lib/db'
+import type { Product } from '@/lib/types'
 import { PRO_PLAN_PRICE_NAIRA, BUSINESS_PLANS } from '@/lib/subscription'
 import { fallbackVisual } from '@/lib/productVisual'
-import { CartBadge, QuickAddButton, TestimonialCarousel, NewsletterForm, ContactForm } from './LandingInteractive'
+import { CartBadge, BuyNowButton, TestimonialCarousel, NewsletterForm, ContactForm } from './LandingInteractive'
 
 const STEPS = [
   { n: '01', title: 'Get Your Card', body: 'Order a TapConnect card or wristband from our shop.', icon: ShoppingBag, image: '/step-1-card.jpg' },
-  { n: '02', title: 'Tap or Scan', body: 'Tap the NFC card or scan the QR code with any phone.', icon: Smartphone, image: '/step-2-tap.jpg' },
+  { n: '02', title: 'Tap or Scan', body: 'Tap your TapConnect Digital Card or scan the QR code with any phone.', icon: Smartphone, image: '/step-2-tap.jpg' },
   { n: '03', title: 'View Profile', body: 'Your digital profile opens instantly.', icon: Eye, image: '/step-3-profile.jpg' },
   { n: '04', title: 'Connect & Grow', body: 'Visitors can contact you, view your products/services and more, while you get real analytics.', icon: TrendingUp, image: '/step-4-analytics.jpg' },
 ]
@@ -29,11 +30,10 @@ const TESTIMONIALS = [
 ]
 
 export default async function Home() {
-  const products = await prisma.product.findMany({
-    where: { availability: { not: 'hidden' } },
-    orderBy: { priceRegular: 'asc' },
-    take: 4,
-  })
+  const products = await query<Product>(
+    'SELECT * FROM `Product` WHERE `availability` != ? ORDER BY `priceRegular` ASC LIMIT 3',
+    ['hidden']
+  )
 
   return (
     <main id="top" className="min-h-screen font-sans bg-white text-[#111111]">
@@ -53,15 +53,15 @@ export default async function Home() {
               <a href="#contact" className="hover:text-white transition-colors">Contact</a>
             </nav>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-full text-white/70" aria-hidden="true">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="hidden sm:inline-flex p-2 rounded-full text-white/70" aria-hidden="true">
               <Search size={20} />
             </span>
             <CartBadge />
-            <Link href="/login" className="ml-2 font-semibold text-sm px-4 py-2.5 rounded-full border border-white/25 hover:bg-white/10 transition-colors">
+            <Link href="/login" className="ml-1 sm:ml-2 font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border border-white/25 hover:bg-white/10 transition-colors whitespace-nowrap">
               Login
             </Link>
-            <Link href="/register" className="font-semibold text-sm px-4 py-2.5 rounded-full bg-white text-black hover:bg-white/90 transition-colors">
+            <Link href="/register" className="font-semibold text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white text-black hover:bg-white/90 transition-colors whitespace-nowrap">
               Get Started
             </Link>
           </div>
@@ -79,7 +79,7 @@ export default async function Home() {
           <div className="flex flex-col gap-7 max-w-xl">
             <Reveal>
               <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/50 border border-white/15 rounded-full px-4 py-1.5 w-fit">
-                NFC Powered &middot; Smarter Connections
+                Powered by NFC + QR &middot; Smarter Connections
               </span>
             </Reveal>
             <Reveal delay={80}>
@@ -89,13 +89,13 @@ export default async function Home() {
             </Reveal>
             <Reveal delay={160}>
               <p className="text-lg text-white/60 leading-relaxed">
-                Create stunning digital profiles, business pages, mini websites and online stores &mdash; all connected to a physical NFC card or QR code.
+                Create stunning digital profiles, business pages, mini websites and online stores &mdash; all connected to your physical TapConnect Digital Card.
               </p>
             </Reveal>
             <Reveal delay={240}>
               <div className="flex flex-wrap gap-4 mt-2">
                 <Link href="/marketplace" className="inline-flex items-center gap-2 bg-white text-black px-6 py-3.5 rounded-full font-semibold hover:bg-white/90 transition-colors">
-                  Shop NFC Products <ArrowRight size={16} />
+                  Shop Digital Cards <ArrowRight size={16} />
                 </Link>
                 <Link href="/register" className="inline-flex items-center gap-2 border border-white/25 px-6 py-3.5 rounded-full font-semibold hover:bg-white/10 transition-colors">
                   Create Your Profile
@@ -227,8 +227,8 @@ export default async function Home() {
           <Reveal>
           <div className="flex items-end justify-between mb-10">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#6B6B6B] mb-3">Our NFC Products</p>
-              <h2 className="text-3xl sm:text-4xl font-bold">Premium NFC Cards and Accessories.</h2>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#6B6B6B] mb-3">TapConnect Digital Cards</p>
+              <h2 className="text-3xl sm:text-4xl font-bold">Your professional identity, one tap away.</h2>
             </div>
             <Link href="/marketplace" className="hidden sm:inline-flex items-center gap-2 font-semibold text-sm hover:underline whitespace-nowrap">
               View All Products <ArrowRight size={14} />
@@ -236,7 +236,7 @@ export default async function Home() {
           </div>
           </Reveal>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {products.map((p, i) => {
               const colors: string[] = p.colors ? JSON.parse(p.colors) : []
               const savings = p.priceSale ? p.priceRegular - p.priceSale : 0
@@ -245,52 +245,55 @@ export default async function Home() {
               return (
                 <Reveal key={p.id} delay={i * 80}>
                 <div className="group bg-white rounded-3xl p-5 shadow-sm flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-                  <Link href={`/marketplace/${p.slug}`} className="relative aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
-                    {'photo' in visual ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                        <visual.icon size={26} className="text-black/70" />
+                  <div className="flex-1">
+                    <Link href={`/marketplace/${p.slug}`} className="relative aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
+                      {'photo' in visual ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                          <visual.icon size={26} className="text-black/70" />
+                        </div>
+                      )}
+                    </Link>
+                    <Link href={`/marketplace/${p.slug}`} className="font-bold hover:underline">{p.name}</Link>
+                    {(p.length || p.width) && (
+                      <p className="text-xs text-[#6B6B6B] mt-1">
+                        {p.length ? `${p.length}cm` : ''}{p.length && p.width ? ' x ' : ''}{p.width ? `${p.width}cm` : ''}
+                      </p>
+                    )}
+                    <div className="mt-3 flex items-baseline gap-2">
+                      {p.priceSale && <span className="text-xs text-[#B8B8B8] line-through">&#8358;{p.priceRegular.toLocaleString()}</span>}
+                      <span className="font-bold text-lg">&#8358;{(p.priceSale ?? p.priceRegular).toLocaleString()}</span>
+                    </div>
+                    {savings > 0 && (
+                      <span className="text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2 py-0.5 w-fit mt-1">
+                        Save &#8358;{savings.toLocaleString()}
+                      </span>
+                    )}
+                    {colors.length > 0 && (
+                      <div className="flex gap-1.5 mt-4">
+                        {colors.map((c) => (
+                          <span
+                            key={c}
+                            title={c}
+                            className="w-4 h-4 rounded-full border border-[#E5E5E5]"
+                            style={{ backgroundColor: c.toLowerCase() === 'black' ? '#000' : c.toLowerCase() === 'white' ? '#fff' : c }}
+                          />
+                        ))}
                       </div>
                     )}
-                  </Link>
-                  <Link href={`/marketplace/${p.slug}`} className="font-bold hover:underline">{p.name}</Link>
-                  {(p.length || p.width) && (
-                    <p className="text-xs text-[#6B6B6B] mt-1">
-                      {p.length ? `${p.length}cm` : ''}{p.length && p.width ? ' x ' : ''}{p.width ? `${p.width}cm` : ''}
-                    </p>
-                  )}
-                  <div className="mt-3 flex items-baseline gap-2">
-                    {p.priceSale && <span className="text-xs text-[#B8B8B8] line-through">&#8358;{p.priceRegular.toLocaleString()}</span>}
-                    <span className="font-bold text-lg">&#8358;{(p.priceSale ?? p.priceRegular).toLocaleString()}</span>
                   </div>
-                  {savings > 0 && (
-                    <span className="text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2 py-0.5 w-fit mt-1">
-                      Save &#8358;{savings.toLocaleString()}
-                    </span>
-                  )}
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex gap-1.5">
-                      {colors.map((c) => (
-                        <span
-                          key={c}
-                          title={c}
-                          className="w-4 h-4 rounded-full border border-[#E5E5E5]"
-                          style={{ backgroundColor: c.toLowerCase() === 'black' ? '#000' : c.toLowerCase() === 'white' ? '#fff' : c }}
-                        />
-                      ))}
-                    </div>
-                    <QuickAddButton
-                      productId={p.id}
-                      name={p.name}
-                      slug={p.slug}
-                      image={null}
-                      unitPrice={p.priceSale ?? p.priceRegular}
-                      customizationPrice={p.customizationPrice}
-                      color={colors[0]}
-                    />
-                  </div>
+                  <BuyNowButton
+                    productId={p.id}
+                    name={p.name}
+                    slug={p.slug}
+                    image={null}
+                    unitPrice={p.priceSale ?? p.priceRegular}
+                    customizationPrice={p.customizationPrice}
+                    color={colors[0]}
+                    className="w-full flex items-center justify-center gap-1.5 bg-black text-white rounded-full py-2.5 font-semibold text-sm hover:bg-[#111111] transition-colors mt-4"
+                  />
                 </div>
                 </Reveal>
               )
@@ -498,7 +501,7 @@ export default async function Home() {
             {[
               {
                 name: 'Free', price: '₦0', period: 'forever',
-                features: ['Digital profile & QR code', 'Basic links & socials', '1 NFC card connection'],
+                features: ['Digital profile & QR code', 'Basic links & socials', '1 TapConnect Digital Card connection'],
                 href: '/register', cta: 'Get Started', highlight: false,
               },
               {
@@ -591,7 +594,7 @@ export default async function Home() {
               Create Your Digital Identity With TapConnect Today.
             </h2>
             <p className="text-white/60 mt-4 max-w-lg">
-              Buy an NFC card, create your profile and start connecting with opportunities everywhere you go.
+              Get your TapConnect Digital Card, create your profile and start connecting with opportunities everywhere you go.
             </p>
           </div>
           <div className="flex flex-wrap gap-4 shrink-0">
@@ -659,7 +662,7 @@ export default async function Home() {
           <div>
             <p className="font-semibold text-white text-sm mb-4">Products</p>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/marketplace" className="hover:text-white transition-colors">NFC Cards</Link></li>
+              <li><Link href="/marketplace" className="hover:text-white transition-colors">Digital Cards</Link></li>
               <li><Link href="/marketplace" className="hover:text-white transition-colors">Wristbands</Link></li>
               <li><Link href="/marketplace" className="hover:text-white transition-colors">Accessories</Link></li>
               <li><Link href="/marketplace" className="hover:text-white transition-colors">Bulk Orders</Link></li>

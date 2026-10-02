@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query, insert } from '@/lib/db'
 import { hashPassword, generateToken } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import type { User } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,27 +13,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username }]
-      }
-    })
+    const existingUsers = await query<User>('SELECT * FROM `User` WHERE `email` = ? OR `username` = ? LIMIT 1', [email, username])
 
-    if (existingUser) {
+    if (existingUsers[0]) {
       return NextResponse.json({ error: 'User with this email or username already exists' }, { status: 409 })
     }
 
     const hashedPassword = await hashPassword(password)
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        username,
-        password: hashedPassword,
-        displayName: displayName || username,
-        phone: phone || null,
-        accountType: 'individual',
-      }
+    const user = await insert<User>('User', {
+      email,
+      username,
+      password: hashedPassword,
+      displayName: displayName || username,
+      phone: phone || null,
+      accountType: 'individual',
     })
 
     const token = generateToken(user.id)

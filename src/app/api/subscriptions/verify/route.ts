@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateWhere, insert } from '@/lib/db'
 import { verifyTransaction } from '@/lib/paystack'
 import { extendProExpiry, PRO_PLAN_PRICE_NAIRA } from '@/lib/subscription'
 import { notify } from '@/lib/notify'
+import type { User } from '@/lib/types'
 
 export async function GET(req: NextRequest) {
   const reference = req.nextUrl.searchParams.get('reference') || req.nextUrl.searchParams.get('trxref')
@@ -17,15 +18,10 @@ export async function GET(req: NextRequest) {
   try {
     const result = await verifyTransaction(reference)
     if (result.status === 'success') {
-      const user = await prisma.user.findUnique({ where: { id: userId } })
+      const user = await findById<User>('User', userId)
       if (user) {
-        await prisma.user.update({
-          where: { id: userId },
-          data: { plan: 'pro', planExpiresAt: extendProExpiry(user.planExpiresAt) },
-        })
-        await prisma.subscriptionPayment.create({
-          data: { userId, plan: 'pro', amount: PRO_PLAN_PRICE_NAIRA, reference, status: 'success', rawResponse: JSON.stringify(result) },
-        }).catch(() => {})
+        await updateWhere('User', { id: userId }, { plan: 'pro', planExpiresAt: extendProExpiry(user.planExpiresAt) })
+        await insert('SubscriptionPayment', { userId, plan: 'pro', amount: PRO_PLAN_PRICE_NAIRA, reference, status: 'success', rawResponse: JSON.stringify(result) }).catch(() => {})
         await notify(userId, {
           type: 'SUBSCRIPTION_ACTIVATED',
           title: 'You are now on Pro',

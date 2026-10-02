@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, insert } from '@/lib/db'
 import { notify } from '@/lib/notify'
+import type { User } from '@/lib/types'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -18,16 +19,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please enter a message' }, { status: 400 })
     }
 
-    const contactMessage = await prisma.contactMessage.create({
-      data: {
-        name: name.trim(),
-        email: email.trim(),
-        phone: typeof phone === 'string' && phone.trim() ? phone.trim() : null,
-        message: message.trim(),
-      },
+    const contactMessage = await insert('ContactMessage', {
+      name: name.trim(),
+      email: email.trim(),
+      phone: typeof phone === 'string' && phone.trim() ? phone.trim() : null,
+      message: message.trim(),
     })
 
-    const admins = await prisma.user.findMany({ where: { accountType: 'admin' }, select: { id: true } })
+    const admins = await findMany<User>('User', { where: { accountType: 'admin' } })
     await Promise.all(admins.map((a) => notify(a.id, {
       type: 'CONTACT_MESSAGE',
       title: `New contact message from ${name.trim()}`,

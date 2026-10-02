@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findOne, updateWhere } from '@/lib/db'
 import { verifyTransaction } from '@/lib/paystack'
 import { extendProExpiry } from '@/lib/subscription'
 import { notify } from '@/lib/notify'
+import type { SubscriptionPayment, Business } from '@/lib/types'
 
 export async function GET(req: NextRequest) {
   const reference = req.nextUrl.searchParams.get('reference') || req.nextUrl.searchParams.get('trxref')
@@ -10,22 +11,16 @@ export async function GET(req: NextRequest) {
 
   if (!reference) return NextResponse.redirect(dashboardUrl)
 
-  const pending = await prisma.subscriptionPayment.findUnique({ where: { reference } })
+  const pending = await findOne<SubscriptionPayment>('SubscriptionPayment', { reference })
   if (!pending || !pending.businessId) return NextResponse.redirect(dashboardUrl)
 
   try {
     const result = await verifyTransaction(reference)
     if (result.status === 'success') {
-      const business = await prisma.business.findUnique({ where: { id: pending.businessId } })
+      const business = await findOne<Business>('Business', { id: pending.businessId })
       if (business) {
-        await prisma.business.update({
-          where: { id: business.id },
-          data: { plan: pending.plan, planExpiresAt: extendProExpiry(business.planExpiresAt) },
-        })
-        await prisma.subscriptionPayment.update({
-          where: { reference },
-          data: { status: 'success', rawResponse: JSON.stringify(result) },
-        })
+        await updateWhere('Business', { id: business.id }, { plan: pending.plan, planExpiresAt: extendProExpiry(business.planExpiresAt) })
+        await updateWhere('SubscriptionPayment', { reference }, { status: 'success', rawResponse: JSON.stringify(result) })
         await notify(business.ownerId, {
           type: 'SUBSCRIPTION_ACTIVATED',
           title: 'Business plan upgraded',
@@ -35,10 +30,7 @@ export async function GET(req: NextRequest) {
         dashboardUrl.searchParams.set('upgraded', '1')
       }
     } else {
-      await prisma.subscriptionPayment.update({
-        where: { reference },
-        data: { status: 'failed', rawResponse: JSON.stringify(result) },
-      })
+      await updateWhere('SubscriptionPayment', { reference }, { status: 'failed', rawResponse: JSON.stringify(result) })
       dashboardUrl.searchParams.set('failed', '1')
     }
   } catch (error) {

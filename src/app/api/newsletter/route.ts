@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query, newId } from '@/lib/db'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -10,11 +10,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
     }
 
-    await prisma.newsletterSubscriber.upsert({
-      where: { email },
-      update: {},
-      create: { email },
-    })
+    await query(
+      'INSERT INTO `NewsletterSubscriber` (`id`, `email`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `email` = `email`',
+      [newId(), email]
+    )
 
     return NextResponse.json({ ok: true }, { status: 201 })
   } catch (error) {

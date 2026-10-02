@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, updateById } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { Lead } from '@/lib/types'
 
 const VALID_STATUSES = ['new', 'contacted', 'interested', 'converted', 'lost']
 
@@ -16,12 +17,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    const existing = await prisma.lead.findUnique({ where: { id } })
+    const existing = await findById<Lead>('Lead', id)
     if (!existing || existing.ownerId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const lead = await prisma.lead.update({ where: { id }, data: { status } })
+    const lead = await updateById<Lead>('Lead', id, { status })
     return NextResponse.json({ lead })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

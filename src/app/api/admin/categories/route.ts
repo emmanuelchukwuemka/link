@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findOne, findById, insert } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import type { Category, Product } from '@/lib/types'
 
 type CategoryNode = {
   id: string
@@ -17,8 +18,8 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const [categories, products] = await Promise.all([
-    prisma.category.findMany({ where: { scope: 'marketplace' }, orderBy: { position: 'asc' } }),
-    prisma.product.findMany({ select: { category: true } }),
+    findMany<Category>('Category', { where: { scope: 'marketplace' }, orderBy: '`position` ASC' }),
+    findMany<Pick<Product, 'category'>>('Product', {}),
   ])
 
   const directCounts = new Map<string, number>()
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
   const normalizedParentId: string | null = parentId || null
 
   if (normalizedParentId) {
-    const parent = await prisma.category.findUnique({ where: { id: normalizedParentId } })
+    const parent = await findById<Category>('Category', normalizedParentId)
     if (!parent || parent.scope !== 'marketplace') {
       return NextResponse.json({ error: 'Parent category not found' }, { status: 404 })
     }
@@ -74,22 +75,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // SQLite treats every NULL as distinct, so the unique index never actually fires
-  // when parentId/userId is null — check explicitly instead of relying on it.
-  const existing = await prisma.category.findFirst({
-    where: { scope: 'marketplace', parentId: normalizedParentId, name: trimmed },
-  })
+  // SQL treats every NULL as distinct (true in SQLite, MySQL and Postgres alike), so
+  // the unique index never actually fires when parentId/userId is null — check
+  // explicitly instead of relying on it.
+  const existing = await findOne<Category>('Category', { scope: 'marketplace', parentId: normalizedParentId, name: trimmed })
   if (existing) {
     return NextResponse.json({ error: 'That category already exists' }, { status: 409 })
   }
 
-  const last = await prisma.category.findFirst({
-    where: { scope: 'marketplace', parentId: normalizedParentId },
-    orderBy: { position: 'desc' },
-  })
+  const [last] = await findMany<Category>('Category', { where: { scope: 'marketplace', parentId: normalizedParentId }, orderBy: '`position` DESC', limit: 1 })
 
-  const category = await prisma.category.create({
-    data: { name: trimmed, scope: 'marketplace', parentId: normalizedParentId, position: last ? last.position + 1 : 0 },
+  const category = await insert<Category>('Category', {
+    name: trimmed,
+    scope: 'marketplace',
+    parentId: normalizedParentId,
+    position: last ? last.position + 1 : 0,
   })
 
   return NextResponse.json({ category }, { status: 201 })

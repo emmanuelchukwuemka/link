@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findById, removeById } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { SocialLink } from '@/lib/types'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,12 +10,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
-    const existing = await prisma.socialLink.findUnique({ where: { id } })
+    const existing = await findById<SocialLink>('SocialLink', id)
     if (!existing || existing.userId !== authData.userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    await prisma.socialLink.delete({ where: { id } })
+    await removeById('SocialLink', id)
 
     return NextResponse.json({ success: true })
   } catch {

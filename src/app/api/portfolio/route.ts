@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findById, insert } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { isProActive } from '@/lib/subscription'
+import type { PortfolioItem, User } from '@/lib/types'
 
 export async function GET() {
   try {
     const authData = await getCurrentUser()
     if (!authData) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const items = await prisma.portfolioItem.findMany({
-      where: { userId: authData.userId },
-      orderBy: { position: 'asc' }
-    })
+    const items = await findMany<PortfolioItem>('PortfolioItem', { where: { userId: authData.userId }, orderBy: '`position` ASC' })
 
     return NextResponse.json({ items })
   } catch {
@@ -24,29 +22,24 @@ export async function POST(req: NextRequest) {
     const authData = await getCurrentUser()
     if (!authData) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const user = await prisma.user.findUnique({ where: { id: authData.userId }, select: { plan: true, planExpiresAt: true } })
+    const user = await findById<User>('User', authData.userId)
     if (!isProActive(user?.plan || 'free', user?.planExpiresAt || null)) {
       return NextResponse.json({ error: 'Portfolio and gallery sections are a Pro feature. Upgrade to add them.' }, { status: 403 })
     }
 
     const { title, description, imageUrl, videoUrl, type } = await req.json()
 
-    const last = await prisma.portfolioItem.findFirst({
-      where: { userId: authData.userId },
-      orderBy: { position: 'desc' }
-    })
+    const [last] = await findMany<PortfolioItem>('PortfolioItem', { where: { userId: authData.userId }, orderBy: '`position` DESC', limit: 1 })
     const position = last ? last.position + 1 : 0
 
-    const item = await prisma.portfolioItem.create({
-      data: {
-        title: title || (type === 'gallery' ? 'New Image' : 'New Project'),
-        description,
-        imageUrl,
-        videoUrl,
-        type: type === 'gallery' ? 'gallery' : 'project',
-        position,
-        userId: authData.userId
-      }
+    const item = await insert<PortfolioItem>('PortfolioItem', {
+      title: title || (type === 'gallery' ? 'New Image' : 'New Project'),
+      description: description ?? null,
+      imageUrl: imageUrl ?? null,
+      videoUrl: videoUrl ?? null,
+      type: type === 'gallery' ? 'gallery' : 'project',
+      position,
+      userId: authData.userId,
     })
 
     return NextResponse.json({ item }, { status: 201 })

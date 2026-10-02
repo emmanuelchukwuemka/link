@@ -6,7 +6,7 @@ export default function AboutPage() {
       <div className="max-w-3xl mx-auto">
         <h1 className="text-5xl font-bold text-[#111111] mb-6 text-center">About TapConnect</h1>
         <p className="text-xl text-gray-600 mb-16 max-w-2xl mx-auto text-center">
-          A digital identity and commerce platform powered by NFC &mdash; not a company that sells NFC cards.
+          A digital identity and commerce platform powered by NFC + QR &mdash; not a company that just sells cards.
         </p>
 
         <div className="space-y-12">

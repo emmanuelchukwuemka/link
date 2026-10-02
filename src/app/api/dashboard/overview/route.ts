@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query, findMany, count } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import type { AnalyticsEvent, Lead, Order, OrderItem, Link } from '@/lib/types'
 
 const CLICK_TYPES = ['CONTACT_SAVE', 'PHONE_CLICK', 'WHATSAPP_CLICK', 'EMAIL_CLICK', 'WEBSITE_CLICK', 'SOCIAL_CLICK']
 
@@ -40,26 +41,35 @@ export async function GET() {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
     const [currentEvents, previousEvents, currentLeads, previousLeads, recentEvents, recentLeads, recentOrders, links, cardCount] = await Promise.all([
-      prisma.analyticsEvent.groupBy({ by: ['type'], where: { userId, createdAt: { gte: sevenDaysAgo } }, _count: { type: true } }),
-      prisma.analyticsEvent.groupBy({ by: ['type'], where: { userId, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } }, _count: { type: true } }),
-      prisma.lead.count({ where: { ownerId: userId, createdAt: { gte: sevenDaysAgo } } }),
-      prisma.lead.count({ where: { ownerId: userId, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } } }),
-      prisma.analyticsEvent.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 8 }),
-      prisma.lead.findMany({ where: { ownerId: userId }, orderBy: { createdAt: 'desc' }, take: 3 }),
-      prisma.order.findMany({
-        where: { userId },
-        include: { items: { include: { product: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 3,
-      }),
-      prisma.link.findMany({ where: { userId }, orderBy: { clicks: 'desc' }, take: 5, select: { id: true, title: true, clicks: true } }),
-      prisma.card.count({ where: { userId } }),
+      query<{ type: string; c: number }>(
+        'SELECT `type`, COUNT(*) as c FROM `AnalyticsEvent` WHERE `userId` = ? AND `createdAt` >= ? GROUP BY `type`',
+        [userId, sevenDaysAgo]
+      ),
+      query<{ type: string; c: number }>(
+        'SELECT `type`, COUNT(*) as c FROM `AnalyticsEvent` WHERE `userId` = ? AND `createdAt` >= ? AND `createdAt` < ? GROUP BY `type`',
+        [userId, fourteenDaysAgo, sevenDaysAgo]
+      ),
+      query<{ c: number }>('SELECT COUNT(*) as c FROM `Lead` WHERE `ownerId` = ? AND `createdAt` >= ?', [userId, sevenDaysAgo]).then((r) => Number(r[0]?.c ?? 0)),
+      query<{ c: number }>('SELECT COUNT(*) as c FROM `Lead` WHERE `ownerId` = ? AND `createdAt` >= ? AND `createdAt` < ?', [userId, fourteenDaysAgo, sevenDaysAgo]).then((r) => Number(r[0]?.c ?? 0)),
+      findMany<AnalyticsEvent>('AnalyticsEvent', { where: { userId }, orderBy: '`createdAt` DESC', limit: 8 }),
+      findMany<Lead>('Lead', { where: { ownerId: userId }, orderBy: '`createdAt` DESC', limit: 3 }),
+      findMany<Order>('Order', { where: { userId }, orderBy: '`createdAt` DESC', limit: 3 }),
+      findMany<Link>('Link', { where: { userId }, orderBy: '`clicks` DESC', limit: 5 }),
+      count('Card', { userId }),
     ])
 
+    const orderIds = recentOrders.map((o) => o.id)
+    const orderItems = orderIds.length
+      ? await query<OrderItem & { productName: string }>(
+          'SELECT oi.*, p.`name` as productName FROM `OrderItem` oi JOIN `Product` p ON p.`id` = oi.`productId` WHERE oi.`orderId` IN (?)',
+          [orderIds]
+        )
+      : []
+
     const curr: Record<string, number> = {}
-    for (const e of currentEvents) curr[e.type] = e._count.type
+    for (const e of currentEvents) curr[e.type] = Number(e.c)
     const prev: Record<string, number> = {}
-    for (const e of previousEvents) prev[e.type] = e._count.type
+    for (const e of previousEvents) prev[e.type] = Number(e.c)
 
     const currClicks = CLICK_TYPES.reduce((s, t) => s + (curr[t] || 0), 0)
     const prevClicks = CLICK_TYPES.reduce((s, t) => s + (prev[t] || 0), 0)
@@ -74,11 +84,8 @@ export async function GET() {
     // 7-day daily series for each of the four headline stats, all from the
     // same underlying event/lead rows already loaded for the period totals.
     const [sevenDayEvents, sevenDayLeads] = await Promise.all([
-      prisma.analyticsEvent.findMany({
-        where: { userId, createdAt: { gte: sevenDaysAgo } },
-        select: { type: true, createdAt: true },
-      }),
-      prisma.lead.findMany({ where: { ownerId: userId, createdAt: { gte: sevenDaysAgo } }, select: { createdAt: true } }),
+      query<{ type: string; createdAt: Date }>('SELECT `type`, `createdAt` FROM `AnalyticsEvent` WHERE `userId` = ? AND `createdAt` >= ?', [userId, sevenDaysAgo]),
+      query<{ createdAt: Date }>('SELECT `createdAt` FROM `Lead` WHERE `ownerId` = ? AND `createdAt` >= ?', [userId, sevenDaysAgo]),
     ])
 
     const emptyDayBuckets = () => {
@@ -146,7 +153,7 @@ export async function GET() {
         orderNumber: o.orderNumber,
         status: o.status,
         createdAt: o.createdAt,
-        items: o.items.map((i) => ({ name: i.product.name, quantity: i.quantity })),
+        items: orderItems.filter((i) => i.orderId === o.id).map((i) => ({ name: i.productName, quantity: i.quantity })),
       })),
       cardCount,
     })

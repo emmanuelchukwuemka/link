@@ -1,24 +1,23 @@
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
+import { query } from '@/lib/db'
+import type { Product } from '@/lib/types'
 import { ShopHeader } from '@/components/ShopHeader'
 import { MarketplaceGrid, type GridProduct } from './MarketplaceGrid'
 
 export default async function MarketplacePage() {
   const [products, soldAgg] = await Promise.all([
-    prisma.product.findMany({
-      where: { availability: { not: 'hidden' } },
-      orderBy: { priceRegular: 'asc' },
-    }),
-    prisma.orderItem.groupBy({
-      by: ['productId'],
-      where: { order: { paymentStatus: 'paid' } },
-      _sum: { quantity: true },
-    }),
+    query<Product>('SELECT * FROM `Product` WHERE `availability` != ? ORDER BY `priceRegular` ASC', ['hidden']),
+    query<{ productId: string; qty: number }>(
+      `SELECT oi.\`productId\` as productId, SUM(oi.\`quantity\`) as qty
+       FROM \`OrderItem\` oi JOIN \`Order\` o ON o.\`id\` = oi.\`orderId\`
+       WHERE o.\`paymentStatus\` = ? GROUP BY oi.\`productId\``,
+      ['paid']
+    ),
   ])
 
-  const soldByProduct = new Map(soldAgg.map((s) => [s.productId, s._sum.quantity || 0]))
+  const soldByProduct = new Map(soldAgg.map((s) => [s.productId, Number(s.qty) || 0]))
   const topSellerId = soldAgg.length > 0
-    ? [...soldAgg].sort((a, b) => (b._sum.quantity || 0) - (a._sum.quantity || 0))[0].productId
+    ? [...soldAgg].sort((a, b) => Number(b.qty || 0) - Number(a.qty || 0))[0].productId
     : null
 
   const dayAgo = new Date()
@@ -60,7 +59,7 @@ export default async function MarketplacePage() {
         <div className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-[#111111] mb-2">Marketplace</h1>
           <p className="text-gray-600 max-w-xl">
-            Choose your NFC card or wristband. Every product ships with a matching QR code and connects to your TapConnect profile.
+            Choose your TapConnect Digital Card. Every card is powered by NFC + QR and connects to your TapConnect profile.
           </p>
         </div>
 

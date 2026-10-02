@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { findMany, findOne } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { notify } from '@/lib/notify'
+import type { User } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
   const admin = await requireRole('admin')
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (broadcast) {
-    const users = await prisma.user.findMany({ select: { id: true } })
+    const users = await findMany<User>('User', {})
     await Promise.all(users.map((u) => notify(u.id, { type: 'ADMIN_BROADCAST', title, message, link })))
     return NextResponse.json({ sent: users.length })
   }
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A username or broadcast flag is required' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({ where: { username }, select: { id: true } })
+  const user = await findOne<User>('User', { username })
   if (!user) return NextResponse.json({ error: `No user found with username "${username}"` }, { status: 404 })
 
   await notify(user.id, { type: 'ADMIN_MESSAGE', title, message, link })

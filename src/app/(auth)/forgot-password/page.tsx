@@ -7,7 +7,7 @@ import { AuthHero } from '../AuthHero'
 
 const CHECKLIST = [
   { icon: User, label: 'Regain access to your profile' },
-  { icon: CreditCard, label: 'Keep your NFC cards connected' },
+  { icon: CreditCard, label: 'Keep your Digital Cards connected' },
   { icon: Sparkles, label: 'Pick up right where you left off' },
 ]
 

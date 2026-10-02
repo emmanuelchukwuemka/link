@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { query, findOne, insert, withTransaction } from '@/lib/db'
 import { hashPassword, generateToken } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import type { User, Business } from '@/lib/types'
 
 function slugify(name: string): string {
   return name
@@ -19,41 +20,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const existingUser = await prisma.user.findFirst({
-      where: { OR: [{ email }, { username }] }
-    })
-    if (existingUser) {
+    const existingUsers = await query<User>('SELECT * FROM `User` WHERE `email` = ? OR `username` = ? LIMIT 1', [email, username])
+    if (existingUsers[0]) {
       return NextResponse.json({ error: 'User with this email or username already exists' }, { status: 409 })
     }
 
     const baseSlug = slugify(businessName) || 'business'
     let slug = baseSlug
     let suffix = 1
-    while (await prisma.business.findUnique({ where: { slug } })) {
+    while (await findOne<Business>('Business', { slug })) {
       slug = `${baseSlug}-${suffix++}`
     }
 
     const hashedPassword = await hashPassword(password)
 
-    const user = await prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
+    const user = await withTransaction(async (tx) => {
+      const createdUser = await insert<User>(
+        'User',
+        {
           email,
           username,
           password: hashedPassword,
           displayName: displayName || username,
           phone: phone || null,
           accountType: 'business_admin',
-        }
-      })
+        },
+        undefined,
+        tx
+      )
 
-      await tx.business.create({
-        data: {
-          name: businessName,
-          slug,
-          ownerId: createdUser.id,
-        }
-      })
+      await insert('Business', { name: businessName, slug, ownerId: createdUser.id }, undefined, tx)
 
       return createdUser
     })
