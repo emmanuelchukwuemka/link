@@ -66,7 +66,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'NFC Cards': 'bg-blue-100 text-blue-700',
+  'TapConnect Cards': 'bg-blue-100 text-blue-700',
   'Wristbands': 'bg-purple-100 text-purple-700',
   'Accessories': 'bg-amber-100 text-amber-700',
   'Custom Designs': 'bg-pink-100 text-pink-700',
@@ -81,7 +81,7 @@ function categoryColor(category: string): string {
 }
 
 const EMPTY_DRAFT: Draft = {
-  name: '', subtitle: '', category: 'NFC Cards', sku: '', stock: '0', description: '', images: [],
+  name: '', subtitle: '', category: 'TapConnect Cards', sku: '', stock: '0', description: '', images: [],
   length: '', width: '', colors: '', priceRegular: '', priceSale: '',
   productionTime: '3-5 business days', availability: 'available', customizationPrice: '5000',
 }
@@ -180,7 +180,7 @@ function ProductModal({
 
           <div>
             <label className="block text-xs font-semibold text-black mb-1.5">Subtitle</label>
-            <input value={values.subtitle} onChange={(e) => set('subtitle', e.target.value)} placeholder="e.g. NFC Card • Wooden" className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black" />
+            <input value={values.subtitle} onChange={(e) => set('subtitle', e.target.value)} placeholder="e.g. TapConnect Card • Wooden" className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -334,7 +334,7 @@ export default function AdminProductsPage() {
     const payload = {
       name: draft.name,
       subtitle: draft.subtitle || null,
-      category: draft.category || 'NFC Cards',
+      category: draft.category || 'TapConnect Cards',
       sku: draft.sku || null,
       stock: draft.stock,
       description: draft.description || null,
@@ -425,7 +425,7 @@ export default function AdminProductsPage() {
           body: JSON.stringify({
             name: row.name,
             subtitle: row.subtitle || null,
-            category: row.category || 'NFC Cards',
+            category: row.category || 'TapConnect Cards',
             sku: row.sku || null,
             stock: row.stock || '0',
             priceRegular: row.priceregular,

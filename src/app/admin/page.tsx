@@ -420,7 +420,7 @@ export default function AdminDashboardPage() {
         <StatCard label="Businesses" value={data.stats.businesses.value} change={data.stats.businesses.change} series={data.stats.businesses.series} icon={Building2} iconBg="bg-green-50" iconColor="text-green-600" />
         <StatCard label="Employees" value={data.stats.employees.value} change={data.stats.employees.change} series={data.stats.employees.series} icon={UserPlus} iconBg="bg-purple-50" iconColor="text-purple-600" />
         <StatCard label="Total Orders" value={data.stats.orders.value} change={data.stats.orders.change} series={data.stats.orders.series} icon={ShoppingCart} iconBg="bg-amber-50" iconColor="text-amber-600" />
-        <StatCard label="NFC Cards Sold" value={data.stats.cardsSold.value} change={data.stats.cardsSold.change} series={data.stats.cardsSold.series} icon={CreditCard} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
+        <StatCard label="TapConnect Cards Sold" value={data.stats.cardsSold.value} change={data.stats.cardsSold.change} series={data.stats.cardsSold.series} icon={CreditCard} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
         <StatCard label="Total Revenue" value={data.stats.revenue.value} change={data.stats.revenue.change} series={data.stats.revenue.series} icon={Wallet} iconBg="bg-emerald-50" iconColor="text-emerald-600" format={(n) => `₦${n.toLocaleString()}`} />
       </div>
 

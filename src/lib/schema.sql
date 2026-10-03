@@ -48,6 +48,10 @@ CREATE TABLE IF NOT EXISTS `Card` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'unassigned',
     `userId` VARCHAR(191) NULL,
     `businessId` VARCHAR(191) NULL,
+    `product` VARCHAR(191) NOT NULL DEFAULT 'standard',
+    `color` VARCHAR(191) NULL,
+    `orderId` VARCHAR(191) NULL,
+    `batchLabel` VARCHAR(191) NULL,
     `assignedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -397,6 +401,14 @@ CREATE TABLE IF NOT EXISTS `OtpCode` (
     INDEX `OtpCode_email_purpose_idx`(`email`, `purpose`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddColumn (Card table existed before product/color/order/batch tracking was added;
+-- CREATE TABLE IF NOT EXISTS above is a no-op on an existing table, so these columns
+-- need an explicit ALTER. Safe to re-run every boot — ER_DUP_FIELDNAME is tolerated.)
+ALTER TABLE `Card` ADD COLUMN `product` VARCHAR(191) NOT NULL DEFAULT 'standard';
+ALTER TABLE `Card` ADD COLUMN `color` VARCHAR(191) NULL;
+ALTER TABLE `Card` ADD COLUMN `orderId` VARCHAR(191) NULL;
+ALTER TABLE `Card` ADD COLUMN `batchLabel` VARCHAR(191) NULL;
 
 -- AddForeignKey
 ALTER TABLE `User` ADD CONSTRAINT `User_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ShoppingBag, Plus, Check, ChevronLeft, ChevronRight, Send, CheckCircle2, ArrowRight } from 'lucide-react'
+import { ShoppingCart, Plus, Check, ChevronLeft, ChevronRight, Send, CheckCircle2, ArrowRight } from 'lucide-react'
 import { addToCart, getCart, cartCount } from '@/lib/cart'
 
 // Primary purchase CTA on homepage product cards — adds to cart and goes
@@ -38,7 +38,7 @@ export function BuyNowButton({
   )
 }
 
-export function CartBadge({ invert = false }: { invert?: boolean }) {
+export function CartBadge({ invert = false, accent = false }: { invert?: boolean; accent?: boolean }) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -48,15 +48,17 @@ export function CartBadge({ invert = false }: { invert?: boolean }) {
     return () => window.removeEventListener('cart-updated', update)
   }, [])
 
+  const badgeClasses = accent ? 'bg-[#22C55E] text-white' : invert ? 'bg-black text-white' : 'bg-white text-black'
+
   return (
     <Link
       href="/cart"
       className={`relative p-2 rounded-full transition-colors ${invert ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
       aria-label="View cart"
     >
-      <ShoppingBag size={20} className={invert ? 'text-black' : 'text-white'} />
+      <ShoppingCart size={20} strokeWidth={1.75} className={invert ? 'text-black' : 'text-white'} />
       {count > 0 && (
-        <span className={`absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center ${invert ? 'bg-black text-white' : 'bg-white text-black'}`}>
+        <span className={`absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center ${badgeClasses}`}>
           {count > 9 ? '9+' : count}
         </span>
       )}

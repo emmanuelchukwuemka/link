@@ -30,7 +30,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
     { code },
     employeeId
       ? { userId: employeeId, status: 'active', assignedAt: new Date() }
-      : { userId: null, status: 'unassigned', assignedAt: null }
+      // Unassigning from an employee returns it to this business's pool, not
+      // to the platform-wide unassigned pool — businessId stays set.
+      : { userId: null, status: 'reserved', assignedAt: null }
   )
   const updated = await findOne<Card>('Card', { code })
 

@@ -19,20 +19,23 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  const isAdminPath = pathname.startsWith('/admin')
+  const loginPath = isAdminPath ? '/admin-login' : '/login'
+
   if (!payload) {
-    const loginUrl = new URL('/login', request.url)
+    const loginUrl = new URL(loginPath, request.url)
     loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (pathname.startsWith('/admin')) {
+  if (isAdminPath) {
     // Was a self-fetch to /api/auth/me using request.url as the base — behind
     // Passenger's reverse proxy that URL's origin doesn't reliably resolve to
     // a reachable address (ECONNREFUSED 127.0.0.1:3000). Query the DB
     // directly instead, same as requireRole() does for API routes.
     const user = await findById<User>('User', payload.userId)
     if (!user || !user.isActive) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return NextResponse.redirect(new URL('/admin-login', request.url))
     }
     if (user.accountType !== 'admin') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
@@ -43,5 +46,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/checkout'],
 }

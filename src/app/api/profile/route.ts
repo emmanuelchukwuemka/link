@@ -49,8 +49,11 @@ export async function PUT(req: NextRequest) {
     }
 
     const user = await updateById<User>('User', authData.userId, updateData)
+    if (!user) return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const { password: _password, ...safeUser } = user
+    void _password
 
-    return NextResponse.json({ user })
+    return NextResponse.json({ user: safeUser })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -60,9 +60,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'My Profile', href: '/dashboard/appearance', icon: User },
-    { name: 'My Cards', href: '/dashboard/cards', icon: CreditCard },
     { name: 'My Links', href: '/dashboard/links', icon: LinkIcon },
+    { name: 'Appearance', href: '/dashboard/appearance', icon: User },
+    { name: 'My Cards', href: '/dashboard/cards', icon: CreditCard },
     {
       name: 'Products & Services', icon: Store, sub: [
         { name: 'Store', href: '/dashboard/store' },

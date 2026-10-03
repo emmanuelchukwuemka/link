@@ -4,19 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Plus, Trash2, Pencil, Check, X, ChevronDown, ChevronRight, GripVertical,
-  Search, Watch, KeyRound,
+  FolderTree, Layers, Package, FolderPlus,
 } from 'lucide-react'
 import { fallbackVisual } from '@/lib/productVisual'
-
-type CategoryNode = {
-  id: string
-  name: string
-  position: number
-  parentId: string | null
-  directCount: number
-  totalCount: number
-  children: CategoryNode[]
-}
+import type { CategoryNode } from '@/lib/categoryTree'
 
 function moveItem(list: CategoryNode[], draggedId: string, targetId: string): CategoryNode[] {
   const dragIdx = list.findIndex((x) => x.id === draggedId)
@@ -180,47 +171,72 @@ export default function AdminCategoriesPage() {
 
   if (loading) return <div className="text-center py-20 text-black">Loading...</div>
 
+  const subCount = categories.reduce((sum, c) => sum + c.children.length, 0)
+  const productCount = categories.reduce((sum, c) => sum + c.totalCount, 0)
+
   return (
-    <div className="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
-      <div className="space-y-5 min-w-0">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
-          <Link href="/admin/products" className="hover:text-black">Products</Link>
-          <ChevronRight size={12} />
-          <span className="text-gray-600">Categories</span>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+        <Link href="/admin/products" className="hover:text-black">Products</Link>
+        <ChevronRight size={12} />
+        <span className="text-gray-600">Categories</span>
+      </div>
 
-        <div>
-          <p className="text-xs font-bold tracking-widest text-blue-600 uppercase mb-1">Products</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-black mb-2">Categories</h1>
-          <p className="text-gray-600 text-sm max-w-lg">Organize your TapConnect product catalog. Create main categories and subcategories for better management.</p>
-        </div>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-black mb-1">Categories</h1>
+        <p className="text-gray-600 text-sm max-w-lg">Organize your TapConnect product catalog into main categories and subcategories.</p>
+      </div>
 
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-4 rounded-2xl shadow-sm bg-white flex flex-col items-center text-center gap-1">
+          <FolderTree size={20} className="text-gray-700" />
+          <span className="text-xl font-bold text-black">{categories.length}</span>
+          <span className="text-xs text-gray-600">Main Categories</span>
+        </div>
+        <div className="p-4 rounded-2xl shadow-sm bg-white flex flex-col items-center text-center gap-1">
+          <Layers size={20} className="text-gray-700" />
+          <span className="text-xl font-bold text-black">{subCount}</span>
+          <span className="text-xs text-gray-600">Subcategories</span>
+        </div>
+        <div className="p-4 rounded-2xl shadow-sm bg-white flex flex-col items-center text-center gap-1">
+          <Package size={20} className="text-gray-700" />
+          <span className="text-xl font-bold text-black">{productCount}</span>
+          <span className="text-xs text-gray-600">Categorized Products</span>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl p-5 shadow-sm">
         <form onSubmit={handleAddRoot} className="flex gap-3">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <FolderPlus size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="New category name..."
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-gray-200 outline-none text-sm text-black focus:border-black transition-colors"
+              className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 border border-transparent outline-none text-sm text-black focus:bg-white focus:border-black transition-colors"
             />
           </div>
           <button
             type="submit"
             disabled={saving || !newName.trim()}
-            className="px-5 py-3 rounded-xl font-semibold text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 flex items-center gap-2 whitespace-nowrap"
+            className="px-5 py-3 rounded-xl font-semibold text-sm bg-black text-white hover:bg-gray-800 disabled:opacity-60 flex items-center gap-2 whitespace-nowrap"
           >
             <Plus size={16} /> Add Category
           </button>
         </form>
+      </div>
 
-        {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm">{error}</div>}
+      {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm">{error}</div>}
 
-        {categories.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 text-center text-black shadow-sm">
-            No categories yet — add your first one above.
+      {categories.length === 0 ? (
+        <div className="bg-white rounded-3xl p-8 text-center text-black shadow-sm">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FolderTree size={28} className="text-gray-400" />
           </div>
-        ) : (
+          <h3 className="text-lg font-bold text-gray-900 mb-1">No categories yet</h3>
+          <p className="text-sm text-gray-500">Add your first category above to start organizing your catalog.</p>
+        </div>
+      ) : (
           <div className="bg-white rounded-3xl shadow-sm divide-y divide-gray-100 overflow-hidden">
             {categories.map((node) => (
               <div key={node.id}>
@@ -360,32 +376,6 @@ export default function AdminCategoriesPage() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="hidden lg:block sticky top-6">
-        <div className="relative rounded-3xl bg-gradient-to-br from-green-50 to-blue-50 p-10 min-h-[420px] flex items-center justify-center overflow-hidden">
-          <div className="absolute w-64 h-64 rounded-full bg-white/40 blur-2xl" />
-
-          <div className="relative w-40 rounded-2xl overflow-hidden shadow-2xl -rotate-6 ring-1 ring-black/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/step-1-card.jpg" alt="" className="w-full h-full object-cover" />
-          </div>
-
-          <div className="absolute top-14 right-10 w-16 h-16 rounded-full bg-blue-600 shadow-xl flex items-center justify-center rotate-6">
-            <Watch size={24} className="text-white" />
-          </div>
-
-          <div className="absolute bottom-16 left-10 w-14 h-14 rounded-full bg-white shadow-xl flex items-center justify-center -rotate-6">
-            <KeyRound size={20} className="text-gray-700" />
-          </div>
-
-          <div className="absolute top-8 left-8 grid grid-cols-3 gap-1.5">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <span key={i} className="w-1 h-1 rounded-full bg-blue-300" />
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

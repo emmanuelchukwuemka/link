@@ -91,7 +91,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       ],
     },
     { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
-    { name: 'NFC Cards', href: '/admin/cards', icon: CreditCard },
+    { name: 'TapConnect Cards', href: '/admin/cards', icon: CreditCard },
     { name: 'Subscriptions', href: '/admin/subscriptions', icon: Crown },
     { name: 'Leads', href: '/admin/leads', icon: MessageSquareText },
     { name: 'Support', href: '/admin/support', icon: MessageCircle, badge: supportUnread },

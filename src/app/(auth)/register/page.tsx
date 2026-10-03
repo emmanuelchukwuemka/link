@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Mail, Check, CreditCard, Store, BarChart3, Sparkles, ArrowLeft, KeyRound, User as UserIcon } from 'lucide-react'
+import { Mail, Check, CreditCard, Store, BarChart3, Sparkles, ArrowLeft, KeyRound, User as UserIcon, AtSign } from 'lucide-react'
 import { AuthHero } from '../AuthHero'
 
 const CHECKLIST = [
@@ -22,14 +22,16 @@ function RegisterForm() {
   const next = searchParams.get('next')
   const isBusiness = searchParams.get('type') === 'business'
 
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [email, setEmail] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [code, setCode] = useState('')
+  const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const codeInputRef = useRef<HTMLInputElement>(null)
+  const usernameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -39,6 +41,7 @@ function RegisterForm() {
 
   useEffect(() => {
     if (step === 2) codeInputRef.current?.focus()
+    if (step === 3) usernameInputRef.current?.focus()
   }, [step])
 
   const requestCode = async () => {
@@ -87,9 +90,32 @@ function RegisterForm() {
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Verification failed')
 
+      setUsername(result.user.username)
       setStep(3)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUsernameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    if (!username.trim()) { setError('Please choose a URL.'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/profile/username', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim() }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Could not claim that URL')
+
+      setStep(4)
       setTimeout(() => {
-        router.push(next || '/dashboard')
+        router.push(next || '/dashboard/links')
         router.refresh()
       }, 1200)
     } catch (err) {
@@ -213,12 +239,44 @@ function RegisterForm() {
           )}
 
           {step === 3 && (
+            <>
+              <h1 className="text-3xl font-bold mb-1">Claim your TapConnect URL</h1>
+              <p className="text-gray-500 mb-8">This is your public profile link &mdash; share it anywhere. You can always change it later in Settings.</p>
+
+              <form onSubmit={handleUsernameSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5"><AtSign size={14} /> Your URL</label>
+                  <div className="flex items-center bg-gray-100 rounded-lg focus-within:bg-white focus-within:ring-2 focus-within:ring-black/10 focus-within:border-black border border-transparent transition-all">
+                    <span className="pl-4 pr-1 text-gray-400 text-sm">tapconnect.ng/</span>
+                    <input
+                      ref={usernameInputRef}
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder="yourname"
+                      className="flex-1 min-w-0 py-3 pr-4 bg-transparent outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !username.trim()}
+                  className="w-full bg-black text-white rounded-full py-4 font-semibold text-lg hover:bg-[#111111] transition-colors disabled:opacity-40"
+                >
+                  {loading ? 'Claiming...' : 'Claim my URL →'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {step === 4 && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Check size={28} />
               </div>
               <h1 className="text-2xl font-bold mb-2">You&apos;re all set!</h1>
-              <p className="text-gray-500">Taking you to your dashboard&hellip;</p>
+              <p className="text-gray-500">tapconnect.ng/{username} is yours. Taking you to your profile builder&hellip;</p>
             </div>
           )}
 

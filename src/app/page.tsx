@@ -236,7 +236,7 @@ export default async function Home() {
           </div>
           </Reveal>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 max-w-4xl mx-auto">
             {products.map((p, i) => {
               const colors: string[] = p.colors ? JSON.parse(p.colors) : []
               const savings = p.priceSale ? p.priceRegular - p.priceSale : 0
@@ -244,9 +244,9 @@ export default async function Home() {
               const visual = images[0] ? { photo: images[0] } : fallbackVisual(p.category)
               return (
                 <Reveal key={p.id} delay={i * 80}>
-                <div className="group bg-white rounded-3xl p-5 shadow-sm flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                <div className="group bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   <div className="flex-1">
-                    <Link href={`/marketplace/${p.slug}`} className="relative aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
+                    <Link href={`/marketplace/${p.slug}`} className="relative aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-xl sm:rounded-2xl mb-3 sm:mb-4 flex items-center justify-center overflow-hidden">
                       {'photo' in visual ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -256,28 +256,28 @@ export default async function Home() {
                         </div>
                       )}
                     </Link>
-                    <Link href={`/marketplace/${p.slug}`} className="font-bold hover:underline">{p.name}</Link>
+                    <Link href={`/marketplace/${p.slug}`} className="font-bold text-sm sm:text-base hover:underline leading-snug">{p.name}</Link>
                     {(p.length || p.width) && (
-                      <p className="text-xs text-[#6B6B6B] mt-1">
+                      <p className="text-xs text-[#6B6B6B] mt-1 hidden sm:block">
                         {p.length ? `${p.length}cm` : ''}{p.length && p.width ? ' x ' : ''}{p.width ? `${p.width}cm` : ''}
                       </p>
                     )}
-                    <div className="mt-3 flex items-baseline gap-2">
+                    <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
                       {p.priceSale && <span className="text-xs text-[#B8B8B8] line-through">&#8358;{p.priceRegular.toLocaleString()}</span>}
-                      <span className="font-bold text-lg">&#8358;{(p.priceSale ?? p.priceRegular).toLocaleString()}</span>
+                      <span className="font-bold text-sm sm:text-lg">&#8358;{(p.priceSale ?? p.priceRegular).toLocaleString()}</span>
                     </div>
                     {savings > 0 && (
-                      <span className="text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2 py-0.5 w-fit mt-1">
+                      <span className="text-[10px] sm:text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2 py-0.5 w-fit mt-1">
                         Save &#8358;{savings.toLocaleString()}
                       </span>
                     )}
                     {colors.length > 0 && (
-                      <div className="flex gap-1.5 mt-4">
+                      <div className="flex gap-1.5 mt-2 sm:mt-4">
                         {colors.map((c) => (
                           <span
                             key={c}
                             title={c}
-                            className="w-4 h-4 rounded-full border border-[#E5E5E5]"
+                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border border-[#E5E5E5]"
                             style={{ backgroundColor: c.toLowerCase() === 'black' ? '#000' : c.toLowerCase() === 'white' ? '#fff' : c }}
                           />
                         ))}
@@ -292,7 +292,7 @@ export default async function Home() {
                     unitPrice={p.priceSale ?? p.priceRegular}
                     customizationPrice={p.customizationPrice}
                     color={colors[0]}
-                    className="w-full flex items-center justify-center gap-1.5 bg-black text-white rounded-full py-2.5 font-semibold text-sm hover:bg-[#111111] transition-colors mt-4"
+                    className="w-full flex items-center justify-center gap-1.5 bg-black text-white rounded-full py-2 sm:py-2.5 font-semibold text-xs sm:text-sm hover:bg-[#111111] transition-colors mt-3 sm:mt-4"
                   />
                 </div>
                 </Reveal>

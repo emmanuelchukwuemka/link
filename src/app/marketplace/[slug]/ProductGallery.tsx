@@ -1,21 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import type { LucideIcon } from 'lucide-react'
+import { fallbackVisual, getCategoryVisual } from '@/lib/productVisual'
 
-type Visual = { icon: LucideIcon } | { photo: string }
-
-export default function ProductGallery({ images, fallback, productName }: {
+export default function ProductGallery({
+  images,
+  category,
+  productName,
+}: {
   images: string[]
-  fallback: Visual
+  category: string
   productName: string
 }) {
   const [active, setActive] = useState(0)
   const selected = images[active]
+  const fallback = fallbackVisual(category)
+  const catVisual = getCategoryVisual(category)
+  const CategoryIcon = catVisual.icon
 
   return (
     <div>
-      <div className="aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-3xl shadow-sm flex items-center justify-center overflow-hidden">
+      <div className="aspect-square bg-[#E8E5E0] rounded-2xl border border-[#D4D0C9] shadow-sm flex items-center justify-center overflow-hidden">
         {selected ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={selected} alt={productName} className="w-full h-full object-cover" />
@@ -23,8 +28,8 @@ export default function ProductGallery({ images, fallback, productName }: {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={fallback.photo} alt={productName} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-24 h-24 rounded-full bg-white shadow-md flex items-center justify-center">
-            <fallback.icon size={36} className="text-black/70" />
+          <div className="w-24 h-24 rounded-3xl bg-white shadow-md flex items-center justify-center">
+            <CategoryIcon size={44} style={{ color: catVisual.accentColor }} />
           </div>
         )}
       </div>
@@ -35,7 +40,7 @@ export default function ProductGallery({ images, fallback, productName }: {
             <button
               key={img}
               onClick={() => setActive(i)}
-              className={`aspect-square rounded-xl overflow-hidden border-2 transition-colors ${active === i ? 'border-black' : 'border-transparent hover:border-gray-300'}`}
+              className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${active === i ? 'border-[#181818]' : 'border-transparent hover:border-[#D4D0C9]'}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img} alt={`${productName} ${i + 1}`} className="w-full h-full object-cover" />

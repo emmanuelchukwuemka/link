@@ -45,6 +45,10 @@ export interface Card {
   status: string
   userId: string | null
   businessId: string | null
+  product: string
+  color: string | null
+  orderId: string | null
+  batchLabel: string | null
   assignedAt: Date | null
   createdAt: Date
 }

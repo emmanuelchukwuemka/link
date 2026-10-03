@@ -2,12 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, ShoppingCart, Zap, Check } from 'lucide-react'
 import { addToCart } from '@/lib/cart'
 import { ImageUploader } from '@/components/ImageUploader'
 
 export default function ProductActions({
-  productId, slug, name, image, unitPrice, customizationPrice, colors,
+  productId,
+  slug,
+  name,
+  image,
+  unitPrice,
+  customizationPrice,
+  colors,
 }: {
   productId: string
   slug: string
@@ -27,7 +33,11 @@ export default function ProductActions({
 
   const handleAdd = () => {
     addToCart({
-      productId, name, slug, image, unitPrice,
+      productId,
+      name,
+      slug,
+      image,
+      unitPrice,
       color: color || undefined,
       customization,
       customizationPrice,
@@ -36,20 +46,32 @@ export default function ProductActions({
       quantity,
     })
     setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
+    setTimeout(() => setAdded(false), 1600)
+  }
+
+  const handleBuyNow = () => {
+    handleAdd()
+    router.push('/checkout')
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pt-3 border-t border-[#D4D0C9]">
+      {/* Color Swatch Selector */}
       {colors.length > 0 && (
         <div>
-          <p className="font-semibold mb-2">Color</p>
-          <div className="flex gap-2">
+          <p className="text-xs font-bold text-[#181818] uppercase tracking-wider mb-2">
+            Select Color / Finish: <span className="text-[#181818]">{color}</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
             {colors.map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`px-4 py-2 rounded-full border-2 text-sm font-medium ${color === c ? 'border-black bg-black text-white' : 'border-gray-200'}`}
+                className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all ${
+                  color === c
+                    ? 'border-[#181818] bg-[#E8E5E0] text-[#181818] ring-1 ring-[#181818]'
+                    : 'border-[#D4D0C9] text-[#181818] hover:border-[#181818] bg-white'
+                }`}
               >
                 {c}
               </button>
@@ -58,60 +80,92 @@ export default function ProductActions({
         </div>
       )}
 
-      <div>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={customization} onChange={(e) => setCustomization(e.target.checked)} className="w-4 h-4" />
-          <span className="text-sm font-medium">Add customization (+&#8358;{customizationPrice.toLocaleString()})</span>
-        </label>
-
-        {customization && (
-          <div className="mt-3 space-y-2 pl-6">
-            <textarea
-              value={customizationNotes}
-              onChange={(e) => setCustomizationNotes(e.target.value)}
-              placeholder="Customization instructions (e.g. name/logo placement)"
-              className="w-full text-sm px-3 py-2 rounded-lg bg-gray-100 outline-none min-h-[70px]"
+      {/* Customization Options */}
+      {customizationPrice > 0 && (
+        <div className="bg-[#E8E5E0] rounded-lg p-3.5 border border-[#D4D0C9]">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={customization}
+              onChange={(e) => setCustomization(e.target.checked)}
+              className="w-4 h-4 accent-[#181818] rounded"
             />
-            <div className="flex items-center gap-2">
-              {customizationFileUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={customizationFileUrl} alt="Design upload" className="w-10 h-10 rounded object-cover" />
-              )}
-              <ImageUploader
-                label={customizationFileUrl ? 'Replace design' : 'Upload logo/design'}
-                onUploaded={setCustomizationFileUrl}
-                className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium text-xs hover:bg-gray-200 flex items-center gap-1"
-              />
-            </div>
-          </div>
-        )}
-      </div>
+            <span className="text-xs sm:text-sm font-bold text-[#181818]">
+              Add Custom Name / Logo Engraving (+&#8358;{customizationPrice.toLocaleString()})
+            </span>
+          </label>
 
-      <div>
-        <p className="font-semibold mb-2">Quantity</p>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50">
-            <Minus size={16} />
+          {customization && (
+            <div className="mt-3 space-y-2.5 pl-6 border-l-2 border-[#181818]">
+              <textarea
+                value={customizationNotes}
+                onChange={(e) => setCustomizationNotes(e.target.value)}
+                placeholder="Enter custom text, full name, or job title to be engraved..."
+                className="w-full text-xs px-3 py-2 rounded-md bg-white border border-[#D4D0C9] outline-none focus:border-[#181818] min-h-[60px]"
+              />
+              <div className="flex items-center gap-2">
+                {customizationFileUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={customizationFileUrl} alt="Design upload" className="w-10 h-10 rounded object-cover border border-[#D4D0C9]" />
+                )}
+                <ImageUploader
+                  label={customizationFileUrl ? 'Replace Logo File' : 'Upload Vector / PNG Logo'}
+                  onUploaded={setCustomizationFileUrl}
+                  className="bg-white border border-[#D4D0C9] text-[#181818] px-3 py-1.5 rounded-md font-bold text-xs hover:bg-[#E8E5E0] flex items-center gap-1 shadow-xs"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quantity Selector */}
+      <div className="flex items-center gap-4">
+        <span className="text-xs font-bold text-[#181818] uppercase tracking-wider">Quantity:</span>
+        <div className="flex items-center border border-[#D4D0C9] rounded-md overflow-hidden bg-white">
+          <button
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            className="w-8 h-8 flex items-center justify-center hover:bg-[#E8E5E0] text-[#66635F] transition-colors"
+            aria-label="Decrease quantity"
+          >
+            <Minus size={14} />
           </button>
-          <span className="w-8 text-center font-semibold">{quantity}</span>
-          <button onClick={() => setQuantity(quantity + 1)} className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50">
-            <Plus size={16} />
+          <span className="w-10 text-center font-bold text-xs sm:text-sm">{quantity}</span>
+          <button
+            onClick={() => setQuantity(quantity + 1)}
+            className="w-8 h-8 flex items-center justify-center hover:bg-[#E8E5E0] text-[#66635F] transition-colors"
+            aria-label="Increase quantity"
+          >
+            <Plus size={14} />
           </button>
         </div>
       </div>
 
-      <div className="flex gap-3">
+      {/* CTA Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button
           onClick={handleAdd}
-          className="flex-1 bg-black text-white py-4 rounded-full font-semibold text-lg hover:bg-gray-800 transition-colors"
+          className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-md font-extrabold text-sm uppercase tracking-wider transition-all duration-200 shadow-sm active:scale-[0.98] ${
+            added
+              ? 'bg-[#181818] text-white'
+              : 'bg-[#181818] hover:bg-[#181818] text-white hover:shadow-md'
+          }`}
         >
-          {added ? 'Added!' : 'Add to Cart'}
+          {added ? (
+            <>
+              <Check size={18} className="stroke-[3]" /> Added to Cart
+            </>
+          ) : (
+            <>
+              <ShoppingCart size={18} /> Add to Cart
+            </>
+          )}
         </button>
         <button
-          onClick={() => { handleAdd(); router.push('/cart') }}
-          className="flex-1 bg-[#000000] text-white py-4 rounded-full font-semibold text-lg hover:bg-[#000000]/90 transition-colors"
+          onClick={handleBuyNow}
+          className="flex-1 flex items-center justify-center gap-2 bg-[#181818] hover:bg-[#181818]/90 text-white py-3.5 px-6 rounded-md font-extrabold text-sm uppercase tracking-wider transition-colors shadow-sm active:scale-[0.98]"
         >
-          Buy Now
+          <Zap size={18} className="fill-[#FFFFFF] text-[#FFFFFF]" /> Buy Now
         </button>
       </div>
     </div>

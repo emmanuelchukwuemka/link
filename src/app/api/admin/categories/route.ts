@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { findMany, findOne, findById, insert } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
+import { buildCategoryTree } from '@/lib/categoryTree'
 import type { Category, Product } from '@/lib/types'
-
-type CategoryNode = {
-  id: string
-  name: string
-  position: number
-  parentId: string | null
-  directCount: number
-  totalCount: number
-  children: CategoryNode[]
-}
 
 export async function GET() {
   const admin = await requireRole('admin')
@@ -22,36 +13,7 @@ export async function GET() {
     findMany<Pick<Product, 'category'>>('Product', {}),
   ])
 
-  const directCounts = new Map<string, number>()
-  for (const p of products) directCounts.set(p.category, (directCounts.get(p.category) || 0) + 1)
-
-  const byId = new Map<string, CategoryNode>()
-  for (const c of categories) {
-    byId.set(c.id, {
-      id: c.id,
-      name: c.name,
-      position: c.position,
-      parentId: c.parentId,
-      directCount: directCounts.get(c.name) || 0,
-      totalCount: 0,
-      children: [],
-    })
-  }
-
-  const roots: CategoryNode[] = []
-  for (const c of categories) {
-    const node = byId.get(c.id)!
-    if (c.parentId && byId.has(c.parentId)) byId.get(c.parentId)!.children.push(node)
-    else roots.push(node)
-  }
-
-  const computeTotal = (node: CategoryNode): number => {
-    node.totalCount = node.directCount + node.children.reduce((sum, child) => sum + computeTotal(child), 0)
-    return node.totalCount
-  }
-  roots.forEach(computeTotal)
-
-  return NextResponse.json({ categories: roots })
+  return NextResponse.json({ categories: buildCategoryTree(categories, products) })
 }
 
 export async function POST(req: NextRequest) {

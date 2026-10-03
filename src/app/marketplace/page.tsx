@@ -1,19 +1,41 @@
-import Link from 'next/link'
+import { Suspense } from 'react'
 import { query } from '@/lib/db'
-import type { Product } from '@/lib/types'
+import type { Category, Product } from '@/lib/types'
+import { CATALOG_PRODUCTS, type CatalogItem } from '@/lib/catalog'
+import { buildCategoryTree } from '@/lib/categoryTree'
 import { ShopHeader } from '@/components/ShopHeader'
-import { MarketplaceGrid, type GridProduct } from './MarketplaceGrid'
+import { MarketplaceApp } from './MarketplaceApp'
+import type { GridProduct } from './ProductCard'
+
+export const metadata = {
+  title: 'TapConnect Marketplace | Nigeria’s Premier Smart NFC E-Commerce Store',
+  description: 'Shop over 100 smart NFC cards, luxury metal cards, bamboo wooden cards, wristbands, smart rings, desk stands, and accessories. Fast nationwide delivery.',
+}
 
 export default async function MarketplacePage() {
-  const [products, soldAgg] = await Promise.all([
-    query<Product>('SELECT * FROM `Product` WHERE `availability` != ? ORDER BY `priceRegular` ASC', ['hidden']),
-    query<{ productId: string; qty: number }>(
-      `SELECT oi.\`productId\` as productId, SUM(oi.\`quantity\`) as qty
-       FROM \`OrderItem\` oi JOIN \`Order\` o ON o.\`id\` = oi.\`orderId\`
-       WHERE o.\`paymentStatus\` = ? GROUP BY oi.\`productId\``,
-      ['paid']
-    ),
-  ])
+  let dbProducts: Product[] = []
+  let soldAgg: { productId: string; qty: number }[] = []
+  let dbCategories: Category[] = []
+
+  try {
+    const [p, s, c] = await Promise.all([
+      query<Product>('SELECT * FROM `Product` WHERE `availability` != ? ORDER BY `priceRegular` ASC', ['hidden']),
+      query<{ productId: string; qty: number }>(
+        `SELECT oi.\`productId\` as productId, SUM(oi.\`quantity\`) as qty
+         FROM \`OrderItem\` oi JOIN \`Order\` o ON o.\`id\` = oi.\`orderId\`
+         WHERE o.\`paymentStatus\` = ? GROUP BY oi.\`productId\``,
+        ['paid']
+      ),
+      query<Category>('SELECT * FROM `Category` WHERE `scope` = ? ORDER BY `position` ASC', ['marketplace']),
+    ])
+    dbProducts = p || []
+    soldAgg = s || []
+    dbCategories = c || []
+  } catch {
+    dbProducts = []
+    soldAgg = []
+    dbCategories = []
+  }
 
   const soldByProduct = new Map(soldAgg.map((s) => [s.productId, Number(s.qty) || 0]))
   const topSellerId = soldAgg.length > 0
@@ -21,11 +43,26 @@ export default async function MarketplacePage() {
     : null
 
   const dayAgo = new Date()
-  dayAgo.setDate(dayAgo.getDate() - 2)
+  dayAgo.setDate(dayAgo.getDate() - 14)
 
-  const gridProducts: GridProduct[] = products.map((p) => {
-    const colors: string[] = p.colors ? JSON.parse(p.colors) : []
-    const images: string[] = p.images ? JSON.parse(p.images) : []
+  const dbProductMap = new Map(dbProducts.map((p) => [p.slug, p]))
+  const mergedProducts: (Product | CatalogItem)[] = [...dbProducts]
+
+  for (const catProd of CATALOG_PRODUCTS) {
+    if (!dbProductMap.has(catProd.slug)) {
+      mergedProducts.push(catProd)
+    }
+  }
+
+  const gridProducts: GridProduct[] = mergedProducts.map((p) => {
+    const colors: string[] = p.colors ? (typeof p.colors === 'string' ? JSON.parse(p.colors) : p.colors) : []
+    const images: string[] = p.images ? (typeof p.images === 'string' ? JSON.parse(p.images) : p.images) : []
+    const catItem = CATALOG_PRODUCTS.find((c) => c.slug === p.slug || c.id === p.id)
+
+    const priceRegular = Number(p.priceRegular) || 15000
+    const priceSale = p.priceSale ? Number(p.priceSale) : null
+    const discountPct = priceSale ? Math.round((1 - priceSale / priceRegular) * 100) : 0
+    const createdAtTime = p.createdAt instanceof Date ? p.createdAt.getTime() : new Date(p.createdAt).getTime()
 
     return {
       id: p.id,
@@ -33,38 +70,37 @@ export default async function MarketplacePage() {
       name: p.name,
       subtitle: p.subtitle,
       category: p.category,
+      brand: catItem?.brand || 'TapConnect',
       image: images[0] || null,
       colors,
-      priceRegular: p.priceRegular,
-      priceSale: p.priceSale,
-      customizationPrice: p.customizationPrice,
-      discountPct: p.priceSale ? Math.round((1 - p.priceSale / p.priceRegular) * 100) : 0,
-      isBestSeller: topSellerId === p.id && (soldByProduct.get(p.id) || 0) > 0,
-      isNew: p.createdAt >= dayAgo,
-      createdAt: p.createdAt.getTime(),
+      priceRegular,
+      priceSale,
+      customizationPrice: Number(p.customizationPrice) || 0,
+      discountPct,
+      isBestSeller: topSellerId === p.id || (catItem ? (catItem.reviewCount > 150 && discountPct >= 30) : false),
+      isNew: createdAtTime >= dayAgo.getTime(),
+      isExpress: catItem?.isExpress ?? true,
+      rating: catItem?.rating ?? 4.8,
+      reviewCount: catItem?.reviewCount ?? (30 + Math.floor(Math.random() * 150)),
+      isFlashSale: catItem?.isFlashSale ?? (discountPct >= 35),
+      flashSaleStockLeft: catItem?.flashSaleStockLeft ?? 12,
+      flashSaleTotalStock: catItem?.flashSaleTotalStock ?? 40,
+      stock: p.stock ?? 100,
+      createdAt: createdAtTime,
     }
   })
 
+  const categoryTree = buildCategoryTree(dbCategories, mergedProducts)
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#E8E5E0] text-[#181818]">
       <ShopHeader />
 
-      <div className="max-w-6xl mx-auto pt-10 pb-20 px-4 sm:px-6">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400 mb-6">
-          <Link href="/" className="hover:text-black">Home</Link>
-          <span>/</span>
-          <span className="text-gray-600">Marketplace</span>
-        </div>
-
-        <div className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-[#111111] mb-2">Marketplace</h1>
-          <p className="text-gray-600 max-w-xl">
-            Choose your TapConnect Digital Card. Every card is powered by NFC + QR and connects to your TapConnect profile.
-          </p>
-        </div>
-
-        <MarketplaceGrid products={gridProducts} />
-      </div>
+      <main className="max-w-7xl mx-auto pt-3 pb-20 px-2 sm:px-4 lg:px-6">
+        <Suspense fallback={<div className="p-12 text-center text-[#66635F] font-semibold">Loading marketplace...</div>}>
+          <MarketplaceApp products={gridProducts} categories={categoryTree} />
+        </Suspense>
+      </main>
     </div>
   )
 }

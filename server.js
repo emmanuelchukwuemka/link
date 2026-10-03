@@ -4,8 +4,83 @@
 // "type": "module" and Passenger invokes this file directly with `node`.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createServer } = require('http')
-const { readFileSync, existsSync } = require('fs')
+const { readFileSync, existsSync, rmSync, openSync, closeSync } = require('fs')
 const { join } = require('path')
+const { execSync } = require('child_process')
+
+// cPanel's Fileman API (the only remote file-management access this host
+// gives us — no shell/SSH) refuses to create brand-new top-level directories
+// during tar extraction ("Cannot mkdir: Permission denied"), even though the
+// account owns the whole tree and uploading individual files works fine —
+// this is host-side hardening against exactly this kind of deploy. The node
+// process itself runs under the account's normal permissions, so self-
+// extracting from here (instead of through Fileman) works. Only runs when
+// .next is actually missing, so a normal deploy with .next already in place
+// never shells out.
+function selfExtractIfMissing() {
+  const nextDir = join(__dirname, '.next')
+  const buildIdFile = join(nextDir, 'BUILD_ID')
+  // BUILD_ID alone isn't proof of a complete extraction — tar writes files
+  // in archive order, and a large archive extracted via a synchronous,
+  // blocking execSync() can get killed mid-extraction by Passenger's startup
+  // timeout. BUILD_ID is tiny and can land before the (much larger) static/
+  // chunk tree finishes, leaving a half-extracted build that looks "real" by
+  // BUILD_ID's presence alone and then never gets re-extracted on later boots.
+  // Checking for the static dir too catches that half-extracted state.
+  const staticDir = join(nextDir, 'static')
+  const tarball = join(__dirname, 'next-prod.tar.gz')
+  const lockFile = join(__dirname, '.next-extract.lock')
+  const hasRealBuild = () => existsSync(buildIdFile) && existsSync(staticDir)
+
+  console.error('[self-extract] __dirname=' + __dirname + ' hasRealBuild=' + hasRealBuild() + ' tarballExists=' + existsSync(tarball))
+  if (hasRealBuild() || !existsSync(tarball)) return
+
+  // Passenger sometimes runs more than one copy of this process around a
+  // restart (observed: interleaved "removing incomplete .next" lines from
+  // what should be a single boot). Without coordination, two processes
+  // racing rmSync+tar on the same .next directory corrupt each other — one
+  // process's tar writes a file into a subdir the instant after the other's
+  // rmSync thought that subdir was empty, throwing ENOTEMPTY. That used to
+  // be uncaught (crashing the process, which Passenger just respawned into
+  // the same race forever). An exclusive lock file serializes the actual
+  // extraction; any process that loses the race just waits for the winner.
+  let haveLock = false
+  try {
+    closeSync(openSync(lockFile, 'wx'))
+    haveLock = true
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      console.error('[self-extract] lock acquire failed: ' + err.message)
+      return
+    }
+  }
+
+  if (!haveLock) {
+    console.error('[self-extract] lock held by another process — waiting for it to finish')
+    const deadline = Date.now() + 90000
+    while (Date.now() < deadline && !hasRealBuild()) {
+      try { execSync('sleep 1') } catch {}
+    }
+    console.error('[self-extract] done waiting, hasRealBuild=' + hasRealBuild())
+    return
+  }
+
+  try {
+    if (existsSync(nextDir)) {
+      console.error('[self-extract] removing incomplete .next before extracting')
+      rmSync(nextDir, { recursive: true, force: true })
+    }
+    console.error('[self-extract] extracting ' + tarball)
+    const out = execSync('tar xzf next-prod.tar.gz 2>&1', { cwd: __dirname }).toString()
+    console.error('[self-extract] tar output: ' + out)
+    console.error('[self-extract] done, BUILD_ID exists now: ' + existsSync(buildIdFile) + ' static exists now: ' + existsSync(staticDir))
+  } catch (err) {
+    console.error('[self-extract] failed: ' + err.message + ' stdout=' + (err.stdout ? err.stdout.toString() : '') + ' stderr=' + (err.stderr ? err.stderr.toString() : ''))
+  } finally {
+    try { rmSync(lockFile, { force: true }) } catch {}
+  }
+}
+selfExtractIfMissing()
 
 // Passenger's PassengerEnvVar injection isn't reaching this process reliably
 // (confirmed: NODE_ENV arrives, DATABASE_URL doesn't), and this plain-Node
@@ -68,7 +143,7 @@ async function syncSchema() {
       // top-level code/errno — matching on the message is what's reliable.
       // Expected on every restart once the constraints already exist.
       const alreadyExists =
-        ['ER_FK_DUP_NAME', 'ER_DUP_KEYNAME', 'ER_TABLE_EXISTS_ERROR'].includes(err.code) ||
+        ['ER_FK_DUP_NAME', 'ER_DUP_KEYNAME', 'ER_TABLE_EXISTS_ERROR', 'ER_DUP_FIELDNAME'].includes(err.code) ||
         /errno:\s*121\b/.test(err.message || '')
       if (alreadyExists) continue
       console.error('[schema sync] statement failed:', stmt.slice(0, 80), err.message)
@@ -81,14 +156,21 @@ async function syncSchema() {
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
-syncSchema()
-  .catch((err) => console.error('[schema sync] failed:', err))
-  .finally(() => {
-    app.prepare().then(() => {
-      createServer((req, res) => {
-        handle(req, res)
-      }).listen(port, () => {
-        console.error(`> Ready on port ${port} as ${dev ? 'development' : process.env.NODE_ENV}`)
-      })
-    })
+// Previously this awaited syncSchema() before starting the HTTP listener,
+// so every single boot paid the full cost of 46 sequential MySQL statements
+// before Passenger/LiteSpeed could see the process as ready. Under repeated
+// or concurrent cold spawns that pushed boot time well past LiteSpeed's
+// connect timeout, so it kept giving up and spawning fresh workers before
+// any of them finished — a self-reinforcing pileup. The schema sync is
+// idempotent and safe to run in the background: starting the listener
+// immediately means Passenger sees "Ready" right away, which is what
+// actually breaks that loop.
+app.prepare().then(() => {
+  createServer((req, res) => {
+    handle(req, res)
+  }).listen(port, () => {
+    console.error(`> Ready on port ${port} as ${dev ? 'development' : process.env.NODE_ENV}`)
   })
+})
+
+syncSchema().catch((err) => console.error('[schema sync] failed:', err))

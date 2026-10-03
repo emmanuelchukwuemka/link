@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     name: data.name,
     slug,
     subtitle: data.subtitle || null,
-    category: data.category || 'NFC Cards',
+    category: data.category || 'TapConnect Cards',
     sku: data.sku || null,
     stock: data.stock !== undefined ? parseInt(data.stock, 10) || 0 : 0,
     description: data.description ?? null,

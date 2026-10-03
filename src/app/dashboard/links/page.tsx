@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Reorder, useDragControls } from 'framer-motion'
 import NextLink from 'next/link'
-import { Plus, Trash2, GripVertical, Link as LinkIcon, Share2, Crown, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Link as LinkIcon, Share2, Crown, ChevronDown, Copy, Check, ExternalLink } from 'lucide-react'
 import { LINK_ICON_NAMES, getLinkIcon } from '@/lib/linkIcons'
 
 const FREE_LINK_LIMIT = 5
@@ -24,6 +24,50 @@ type SocialLinkType = {
 }
 
 const SOCIAL_PLATFORMS = ['Instagram', 'TikTok', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'Snapchat', 'Threads', 'Website']
+
+function ProfileHeader({ username, displayName, bio, avatarUrl }: {
+  username: string
+  displayName: string | null
+  bio: string | null
+  avatarUrl: string | null
+}) {
+  const [copied, setCopied] = useState(false)
+  const url = `tapconnect.ng/${username}`
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`https://${url}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div className="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-4">
+      <div className="w-14 h-14 rounded-full bg-black overflow-hidden flex items-center justify-center text-xl font-bold text-white shrink-0">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+        ) : (
+          (displayName || username).charAt(0).toUpperCase()
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-lg truncate">{displayName || `@${username}`}</p>
+        {bio && <p className="text-sm text-gray-500 truncate">{bio}</p>}
+        <div className="flex items-center gap-1.5 mt-1">
+          <a href={`/${username}`} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-black truncate flex items-center gap-1">
+            {url} <ExternalLink size={12} />
+          </a>
+        </div>
+      </div>
+      <button
+        onClick={handleCopy}
+        className="shrink-0 flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-black text-sm font-semibold px-4 py-2 rounded-full transition-colors"
+      >
+        {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}
+      </button>
+    </div>
+  )
+}
 
 function IconPicker({ value, onChange }: { value: string | null | undefined; onChange: (name: string) => void }) {
   const [open, setOpen] = useState(false)
@@ -146,6 +190,7 @@ export default function DashboardLinksPage() {
   const [loading, setLoading] = useState(true)
   const [isPro, setIsPro] = useState(false)
   const [linkError, setLinkError] = useState('')
+  const [profile, setProfile] = useState<{ username: string; displayName: string | null; bio: string | null; avatarUrl: string | null } | null>(null)
 
   const fetchLinks = async () => {
     try {
@@ -175,6 +220,12 @@ export default function DashboardLinksPage() {
     fetch('/api/auth/me').then(res => res.json()).then(data => {
       if (data.user) {
         setIsPro(data.user.plan === 'pro' && (!data.user.planExpiresAt || new Date(data.user.planExpiresAt) > new Date()))
+        setProfile({
+          username: data.user.username,
+          displayName: data.user.displayName,
+          bio: data.user.bio,
+          avatarUrl: data.user.avatarUrl,
+        })
       }
     })
   }, [])
@@ -282,10 +333,13 @@ export default function DashboardLinksPage() {
 
   return (
     <div className="grid md:grid-cols-[1fr_400px] gap-8 items-start">
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0">
+        {profile && (
+          <ProfileHeader username={profile.username} displayName={profile.displayName} bio={profile.bio} avatarUrl={profile.avatarUrl} />
+        )}
         {!isPro && (
-          <div className="flex items-center justify-between text-sm bg-white rounded-2xl px-4 py-3 shadow-sm">
-            <span className="text-black flex items-center gap-1.5"><Crown size={14} className="text-amber-500" /> {links.length} / {FREE_LINK_LIMIT} links used on the Free plan</span>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm bg-white rounded-2xl px-4 py-3 shadow-sm">
+            <span className="text-black flex items-center gap-1.5"><Crown size={14} className="text-amber-500 shrink-0" /> {links.length} / {FREE_LINK_LIMIT} links used on the Free plan</span>
             <NextLink href="/dashboard/subscription" className="font-semibold text-black hover:underline">Upgrade for unlimited</NextLink>
           </div>
         )}
@@ -322,11 +376,11 @@ export default function DashboardLinksPage() {
 
         <div className="bg-white rounded-3xl p-6 shadow-sm">
           <h2 className="font-bold text-lg mb-4 flex items-center gap-2"><Share2 size={18} /> Social Icons</h2>
-          <form onSubmit={handleAddSocial} className="flex gap-2 mb-4">
+          <form onSubmit={handleAddSocial} className="flex flex-wrap gap-2 mb-4">
             <select
               value={newSocial.platform}
               onChange={(e) => setNewSocial({ ...newSocial, platform: e.target.value })}
-              className="px-3 py-2 rounded-lg bg-gray-100 border-transparent outline-none text-sm"
+              className="shrink-0 px-3 py-2 rounded-lg bg-gray-100 border-transparent outline-none text-sm"
             >
               {SOCIAL_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -335,9 +389,9 @@ export default function DashboardLinksPage() {
               value={newSocial.url}
               onChange={(e) => setNewSocial({ ...newSocial, url: e.target.value })}
               placeholder="Profile URL"
-              className="flex-1 px-3 py-2 rounded-lg bg-gray-100 border-transparent outline-none text-sm"
+              className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-gray-100 border-transparent outline-none text-sm"
             />
-            <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800">
+            <button type="submit" className="shrink-0 bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800">
               Add
             </button>
           </form>
