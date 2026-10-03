@@ -13,12 +13,13 @@ function track(username: string, type: string, meta?: Record<string, unknown>) {
 }
 
 export function TrackedLink({
-  href, type, username, className, children, meta,
+  href, type, username, className, style, children, meta,
 }: {
   href: string
   type: string
   username: string
   className?: string
+  style?: React.CSSProperties
   children: React.ReactNode
   meta?: Record<string, unknown>
 }) {
@@ -28,6 +29,7 @@ export function TrackedLink({
       target={href.startsWith('http') ? '_blank' : undefined}
       rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
       className={className}
+      style={style}
       onClick={() => track(username, type, meta)}
     >
       {children}

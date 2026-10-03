@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Star, Zap, ShieldCheck, Flame } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { fallbackVisual, getCategoryVisual } from '@/lib/productVisual'
 import { WishlistButton, AddToCartButton } from './MarketplaceInteractive'
 
@@ -20,12 +20,6 @@ export type GridProduct = {
   discountPct: number
   isBestSeller: boolean
   isNew: boolean
-  isExpress?: boolean
-  rating?: number
-  reviewCount?: number
-  isFlashSale?: boolean
-  flashSaleStockLeft?: number
-  flashSaleTotalStock?: number
   stock?: number
   createdAt: number
 }
@@ -59,24 +53,6 @@ function swatchColor(name: string) {
   return SWATCH_COLORS[name] || '#D4D0C9'
 }
 
-function renderStars(rating: number = 4.8) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          size={12}
-          className={
-            star <= Math.round(rating)
-              ? 'fill-[#181818] text-[#181818]'
-              : 'fill-[#D4D0C9] text-[#D4D0C9]'
-          }
-        />
-      ))}
-    </div>
-  )
-}
-
 export function ProductCard({
   p,
   className = '',
@@ -89,16 +65,10 @@ export function ProductCard({
   const visual = p.image ? { photo: p.image } : fallbackVisual(p.category)
   const catVisual = getCategoryVisual(p.category)
   const CategoryIcon = catVisual.icon
-  const effectiveRating = p.rating ?? 4.8
-  const effectiveReviews = p.reviewCount ?? 84
   const currentPrice = p.priceSale ?? p.priceRegular
   const discount = p.discountPct
 
   if (layout === 'flash') {
-    const stockLeft = p.flashSaleStockLeft ?? 12
-    const totalStock = p.flashSaleTotalStock ?? 40
-    const pctClaimed = Math.min(95, Math.max(20, Math.round(((totalStock - stockLeft) / totalStock) * 100)))
-
     return (
       <div className={`group bg-white rounded-lg border border-[#D4D0C9] shadow-xs hover:shadow-md transition-all flex flex-col p-3 ${className}`}>
         {/* Thumbnail & Badge */}
@@ -150,32 +120,16 @@ export function ProductCard({
             )}
           </div>
 
-          {/* Progress bar */}
           <div className="mt-auto pt-2">
-            <div className="flex items-center justify-between text-[11px] text-[#66635F] mb-1 font-semibold">
-              <span className="flex items-center gap-1 text-[#181818] font-bold">
-                <Flame size={12} className="fill-[#181818] text-[#181818]" /> {stockLeft} left
-              </span>
-              <span>{pctClaimed}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-[#E8E5E0] rounded-full overflow-hidden border border-[#D4D0C9]">
-              <div
-                className="h-full bg-[#181818] rounded-full transition-all"
-                style={{ width: `${pctClaimed}%` }}
-              />
-            </div>
-
-            <div className="mt-2.5">
-              <AddToCartButton
-                productId={p.id}
-                name={p.name}
-                slug={p.slug}
-                image={p.image}
-                unitPrice={currentPrice}
-                customizationPrice={p.customizationPrice}
-                color={p.colors[0]}
-              />
-            </div>
+            <AddToCartButton
+              productId={p.id}
+              name={p.name}
+              slug={p.slug}
+              image={p.image}
+              unitPrice={currentPrice}
+              customizationPrice={p.customizationPrice}
+              color={p.colors[0]}
+            />
           </div>
         </div>
       </div>
@@ -220,11 +174,6 @@ export function ProductCard({
               <span className="text-[11px] font-bold text-[#66635F] uppercase tracking-wide">
                 {p.category}
               </span>
-              {p.isExpress && (
-                <span className="inline-flex items-center gap-0.5 bg-[#E8E5E0] text-[#181818] text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#D4D0C9]">
-                  <Zap size={10} className="fill-[#181818] text-[#181818]" /> EXPRESS
-                </span>
-              )}
               {p.brand && (
                 <span className="inline-flex items-center gap-0.5 bg-[#E8E5E0] text-[#66635F] text-[10px] font-medium px-1.5 py-0.5 rounded border border-[#D4D0C9]">
                   <ShieldCheck size={10} /> {p.brand}
@@ -240,17 +189,10 @@ export function ProductCard({
             </Link>
 
             {p.subtitle && (
-              <p className="text-xs text-[#66635F] line-clamp-2 mb-2 leading-relaxed">
+              <p className="text-xs text-[#66635F] line-clamp-2 mb-3 leading-relaxed">
                 {p.subtitle}
               </p>
             )}
-
-            <div className="flex items-center gap-2 mb-3">
-              {renderStars(effectiveRating)}
-              <span className="text-xs text-[#66635F] font-medium">
-                {effectiveRating.toFixed(1)} ({effectiveReviews})
-              </span>
-            </div>
           </div>
 
           <div className="flex items-center justify-between gap-4 pt-2 border-t border-[#D4D0C9] flex-wrap">
@@ -348,29 +290,16 @@ export function ProductCard({
             <span className="text-[10px] font-bold text-[#66635F] uppercase tracking-wider truncate">
               {p.category}
             </span>
-            {p.isExpress && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-[#181818] bg-[#E8E5E0] px-1 py-0.5 rounded border border-[#D4D0C9] shrink-0">
-                <Zap size={9} className="fill-[#181818] text-[#181818]" /> EXPRESS
-              </span>
-            )}
           </div>
 
           {/* Title */}
           <Link
             href={`/marketplace/${p.slug}`}
-            className="font-bold text-xs sm:text-sm text-[#181818] hover:text-[#66635F] leading-snug line-clamp-2 mb-1.5 transition-colors block"
+            className="font-bold text-xs sm:text-sm text-[#181818] hover:text-[#66635F] leading-snug line-clamp-2 mb-2 transition-colors block"
             title={p.name}
           >
             {p.name}
           </Link>
-
-          {/* Rating */}
-          <div className="flex items-center gap-1.5 mb-2">
-            {renderStars(effectiveRating)}
-            <span className="text-[11px] text-[#66635F] font-medium">
-              ({effectiveReviews})
-            </span>
-          </div>
 
           {/* Color Swatches */}
           {p.colors && p.colors.length > 0 && (

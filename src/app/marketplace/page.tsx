@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { query } from '@/lib/db'
 import type { Category, Product } from '@/lib/types'
-import { CATALOG_PRODUCTS, type CatalogItem } from '@/lib/catalog'
 import { buildCategoryTree } from '@/lib/categoryTree'
 import { ShopHeader } from '@/components/ShopHeader'
 import { MarketplaceApp } from './MarketplaceApp'
@@ -45,19 +44,9 @@ export default async function MarketplacePage() {
   const dayAgo = new Date()
   dayAgo.setDate(dayAgo.getDate() - 14)
 
-  const dbProductMap = new Map(dbProducts.map((p) => [p.slug, p]))
-  const mergedProducts: (Product | CatalogItem)[] = [...dbProducts]
-
-  for (const catProd of CATALOG_PRODUCTS) {
-    if (!dbProductMap.has(catProd.slug)) {
-      mergedProducts.push(catProd)
-    }
-  }
-
-  const gridProducts: GridProduct[] = mergedProducts.map((p) => {
+  const gridProducts: GridProduct[] = dbProducts.map((p) => {
     const colors: string[] = p.colors ? (typeof p.colors === 'string' ? JSON.parse(p.colors) : p.colors) : []
     const images: string[] = p.images ? (typeof p.images === 'string' ? JSON.parse(p.images) : p.images) : []
-    const catItem = CATALOG_PRODUCTS.find((c) => c.slug === p.slug || c.id === p.id)
 
     const priceRegular = Number(p.priceRegular) || 15000
     const priceSale = p.priceSale ? Number(p.priceSale) : null
@@ -70,27 +59,21 @@ export default async function MarketplacePage() {
       name: p.name,
       subtitle: p.subtitle,
       category: p.category,
-      brand: catItem?.brand || 'TapConnect',
+      brand: 'TapConnect',
       image: images[0] || null,
       colors,
       priceRegular,
       priceSale,
       customizationPrice: Number(p.customizationPrice) || 0,
       discountPct,
-      isBestSeller: topSellerId === p.id || (catItem ? (catItem.reviewCount > 150 && discountPct >= 30) : false),
+      isBestSeller: topSellerId === p.id,
       isNew: createdAtTime >= dayAgo.getTime(),
-      isExpress: catItem?.isExpress ?? true,
-      rating: catItem?.rating ?? 4.8,
-      reviewCount: catItem?.reviewCount ?? (30 + Math.floor(Math.random() * 150)),
-      isFlashSale: catItem?.isFlashSale ?? (discountPct >= 35),
-      flashSaleStockLeft: catItem?.flashSaleStockLeft ?? 12,
-      flashSaleTotalStock: catItem?.flashSaleTotalStock ?? 40,
-      stock: p.stock ?? 100,
+      stock: p.stock ?? 0,
       createdAt: createdAtTime,
     }
   })
 
-  const categoryTree = buildCategoryTree(dbCategories, mergedProducts)
+  const categoryTree = buildCategoryTree(dbCategories, dbProducts)
 
   return (
     <div className="min-h-screen bg-[#E8E5E0] text-[#181818]">

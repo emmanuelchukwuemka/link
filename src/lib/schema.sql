@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `User` (
     `bio` TEXT NULL,
     `aboutText` TEXT NULL,
     `avatarUrl` VARCHAR(191) NULL,
+    `showAvatar` BOOLEAN NOT NULL DEFAULT true,
     `phone` VARCHAR(191) NULL,
     `whatsapp` VARCHAR(191) NULL,
     `website` VARCHAR(191) NULL,
@@ -409,6 +410,7 @@ ALTER TABLE `Card` ADD COLUMN `product` VARCHAR(191) NOT NULL DEFAULT 'standard'
 ALTER TABLE `Card` ADD COLUMN `color` VARCHAR(191) NULL;
 ALTER TABLE `Card` ADD COLUMN `orderId` VARCHAR(191) NULL;
 ALTER TABLE `Card` ADD COLUMN `batchLabel` VARCHAR(191) NULL;
+ALTER TABLE `User` ADD COLUMN `showAvatar` BOOLEAN NOT NULL DEFAULT true;
 
 -- AddForeignKey
 ALTER TABLE `User` ADD CONSTRAINT `User_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

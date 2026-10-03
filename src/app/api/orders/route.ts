@@ -3,7 +3,6 @@ import { findMany, findOne, insert, withTransaction } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { generateOrderNumber } from '@/lib/orders'
 import { initializeTransaction, isPaystackConfigured } from '@/lib/paystack'
-import { getCatalogProductById } from '@/lib/catalog'
 import type { Product, DeliveryZone, Order, OrderItem } from '@/lib/types'
 
 type CartItemInput = {
@@ -44,37 +43,6 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     const productMap = new Map(products.map(p => [p.id, p]))
-
-    // Ensure all 100 catalog products are resolvable even if not yet in DB
-    for (const pid of productIds) {
-      if (!productMap.has(pid)) {
-        const catProd = getCatalogProductById(pid)
-        if (catProd) {
-          productMap.set(pid, catProd as unknown as Product)
-          try {
-            await insert('Product', {
-              id: catProd.id,
-              name: catProd.name,
-              slug: catProd.slug,
-              subtitle: catProd.subtitle,
-              category: catProd.category,
-              sku: catProd.sku,
-              stock: catProd.stock,
-              description: catProd.description,
-              images: catProd.images,
-              length: catProd.length,
-              width: catProd.width,
-              colors: catProd.colors,
-              priceRegular: catProd.priceRegular,
-              priceSale: catProd.priceSale,
-              productionTime: catProd.productionTime,
-              availability: catProd.availability,
-              customizationPrice: catProd.customizationPrice,
-            }, { id: false })
-          } catch {}
-        }
-      }
-    }
 
     let subtotal = 0
     const orderItemsData = items.map((item) => {

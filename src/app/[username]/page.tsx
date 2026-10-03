@@ -3,23 +3,27 @@ import type { User, Link as LinkRow, SocialLink, Service, PortfolioItem, Testimo
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Phone, Mail, Globe, MapPin, Camera, Users, Video, Music2, Hash, Ghost, AtSign,
+  Phone, Mail, Globe, MapPin,
   MessageCircle, Star, Clock, Briefcase, Image as ImageIcon,
 } from 'lucide-react'
+import type { ComponentType, SVGProps } from 'react'
 import { TrackedLink, TrackedButtonLink, SaveContactButton, LeadForm, StoreProductCard } from './ProfileInteractive'
 import { backgroundStyle } from '@/lib/background'
 import { getLinkIcon } from '@/lib/linkIcons'
 import { getTemplate } from '@/lib/templates'
 import { buttonSizePadding, buttonSizeFontClass } from '@/lib/buttonSize'
+import {
+  InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon,
+  LinkedInIcon, SnapchatIcon, ThreadsIcon,
+} from '@/lib/brandIcons'
 
-// lucide-react ships no brand/logo icons, so social platforms map to neutral stand-ins.
-const SOCIAL_ICONS: Record<string, typeof Globe> = {
-  Instagram: Camera, TikTok: Music2, Facebook: Users, LinkedIn: Briefcase,
-  X: Hash, YouTube: Video, Snapchat: Ghost, Threads: AtSign, Website: Globe,
+const SOCIAL_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  Instagram: InstagramIcon, TikTok: TikTokIcon, Facebook: FacebookIcon, LinkedIn: LinkedInIcon,
+  X: XIcon, YouTube: YouTubeIcon, Snapchat: SnapchatIcon, Threads: ThreadsIcon, Website: Globe,
 }
 
 function borderRadius(style: string) {
-  return style === 'rounded' ? '9999px' : style === 'square' ? '0.5rem' : '0'
+  return style === 'rounded' || style === 'outline' ? '9999px' : style === 'square' ? '0.5rem' : '0'
 }
 
 function waLink(phone: string, message: string) {
@@ -71,22 +75,31 @@ export default async function PublicProfilePage({
     >
       <div className="z-10 w-full max-w-2xl mx-auto flex flex-col items-center">
         {/* Avatar */}
-        <div className={`w-24 h-24 overflow-hidden mb-4 bg-gray-200 shadow-xl ${tmpl.avatarShape} ${tmpl.avatarRing}`}>
-          {user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatarUrl} alt={user.displayName || user.username} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-500">
-              {(user.displayName || user.username).charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
+        {user.showAvatar !== false && (
+          <div className={`w-24 h-24 overflow-hidden mb-4 bg-gray-200 shadow-xl ${tmpl.avatarShape} ${tmpl.avatarRing}`}>
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.avatarUrl} alt={user.displayName || user.username} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-500">
+                {(user.displayName || user.username).charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Name, title, bio */}
-        <h1 className="text-2xl font-bold text-center">{user.displayName || `@${user.username}`}</h1>
-        <p className="text-sm opacity-60 mb-1">@{user.username}</p>
-        {displayTitle && <p className="text-sm font-medium opacity-80 mb-2">{displayTitle}</p>}
-        {user.bio && <p className="text-center mb-6 opacity-90 max-w-md">{user.bio}</p>}
+        <h1 className="text-2xl font-extrabold text-center">
+          {user.displayName || `@${user.username}`}
+        </h1>
+        <p className="text-sm opacity-60 mt-1 mb-1">@{user.username}</p>
+        {(displayTitle || user.bio) && (
+          <p
+            className="text-sm font-bold uppercase tracking-wide text-center max-w-md mb-2 opacity-90"
+          >
+            {[displayTitle, user.bio].filter(Boolean).join(' · ')}
+          </p>
+        )}
 
         {/* Business panel (employee profiles) */}
         {user.business && (
@@ -106,7 +119,7 @@ export default async function PublicProfilePage({
 
         {/* Social icons */}
         {user.socialLinks.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-3 mb-6">
+          <div className="flex flex-wrap justify-center items-center gap-4 mb-6">
             {user.socialLinks.map((s) => {
               const Icon = SOCIAL_ICONS[s.platform] || Globe
               return (
@@ -116,9 +129,9 @@ export default async function PublicProfilePage({
                   type="SOCIAL_CLICK"
                   username={user.username}
                   meta={{ platform: s.platform }}
-                  className="w-10 h-10 rounded-full bg-black/10 hover:bg-black/20 flex items-center justify-center transition-colors"
+                  className="flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity"
                 >
-                  <Icon size={18} />
+                  <Icon width={24} height={24} />
                 </TrackedLink>
               )
             })}
@@ -175,6 +188,7 @@ export default async function PublicProfilePage({
         <div className="w-full max-w-md space-y-4">
           {user.links.map((link) => {
             const Icon = getLinkIcon(link.iconName)
+            const isOutline = user.buttonStyle === 'outline'
             return (
               <TrackedButtonLink
                 key={link.id}
@@ -185,8 +199,9 @@ export default async function PublicProfilePage({
                 <span
                   className={`flex items-center gap-3 w-full ${buttonSizeFontClass(user.buttonSize)}`}
                   style={{
-                    backgroundColor: user.buttonColor,
-                    color: user.buttonTextColor,
+                    backgroundColor: isOutline ? 'transparent' : user.buttonColor,
+                    color: isOutline ? user.buttonColor : user.buttonTextColor,
+                    border: isOutline ? `2px solid ${user.buttonColor}` : 'none',
                     borderRadius: borderRadius(user.buttonStyle),
                     padding: buttonSizePadding(user.buttonSize),
                   }}

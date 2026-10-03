@@ -37,6 +37,7 @@ export default function AppearancePage() {
     bio: '',
     aboutText: '',
     avatarUrl: '',
+    showAvatar: true,
     bgType: 'solid',
     bgColor: '#f3f3f1',
     bgGradient: GRADIENT_PRESETS[0],
@@ -71,6 +72,7 @@ export default function AppearancePage() {
             bio: data.user.bio || '',
             aboutText: data.user.aboutText || '',
             avatarUrl: data.user.avatarUrl || '',
+            showAvatar: data.user.showAvatar !== false,
             bgType: data.user.bgType || 'solid',
             bgColor: data.user.bgColor || '#f3f3f1',
             bgGradient: data.user.bgGradient || GRADIENT_PRESETS[0],
@@ -164,6 +166,15 @@ export default function AppearancePage() {
                    Remove
                  </button>
                )}
+               <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer mt-1">
+                 <input
+                   type="checkbox"
+                   checked={profile.showAvatar}
+                   onChange={(e) => handleUpdate({ showAvatar: e.target.checked })}
+                   className="accent-black w-4 h-4 rounded"
+                 />
+                 Show profile photo on my page
+               </label>
              </div>
           </div>
           <div className="space-y-4">
@@ -388,7 +399,7 @@ export default function AppearancePage() {
 
             <div>
               <h3 className="font-semibold mb-3">Buttons</h3>
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-4 gap-4 mb-4">
                 <button
                   onClick={() => handleUpdate({ buttonStyle: 'rounded' })}
                   className={`py-4 rounded-full border-2 ${profile.buttonStyle === 'rounded' ? 'border-black' : 'border-gray-200'} hover:border-gray-400`}
@@ -406,6 +417,13 @@ export default function AppearancePage() {
                   className={`py-4 border-2 ${profile.buttonStyle === 'sharp' ? 'border-black' : 'border-gray-200'} hover:border-gray-400`}
                 >
                   <div className="w-1/2 h-2 bg-gray-300 mx-auto rounded-full"></div>
+                </button>
+                <button
+                  onClick={() => handleUpdate({ buttonStyle: 'outline' })}
+                  className={`py-4 rounded-full border-2 ${profile.buttonStyle === 'outline' ? 'border-black' : 'border-gray-200'} hover:border-gray-400`}
+                  title="Outline — bordered pill with no fill, like Linktree"
+                >
+                  <div className="w-1/2 h-2 border-2 border-gray-400 mx-auto rounded-full"></div>
                 </button>
               </div>
 
@@ -475,35 +493,30 @@ export default function AppearancePage() {
           className="w-full py-12 px-4 flex flex-col items-center gap-4 min-h-full"
           style={{ ...backgroundStyle(profile), color: profile.textColor }}
         >
-           <div className="w-24 h-24 bg-gray-300 rounded-full mb-2 flex items-center justify-center text-3xl font-bold text-black overflow-hidden">
-             {profile.displayName?.charAt(0) || profile.username?.charAt(0) || 'U'}
-           </div>
-           <h2 className="font-bold text-xl">{profile.displayName || `@${profile.username}`}</h2>
-           {profile.bio && <p className="text-center text-sm opacity-90">{profile.bio}</p>}
+           {profile.showAvatar && (
+             <div className="w-24 h-24 bg-gray-300 rounded-full mb-2 flex items-center justify-center text-3xl font-bold text-black overflow-hidden">
+               {profile.displayName?.charAt(0) || profile.username?.charAt(0) || 'U'}
+             </div>
+           )}
+           <h2 className="font-extrabold text-xl">{profile.displayName || `@${profile.username}`}</h2>
+           {profile.bio && <p className="text-center text-sm font-bold uppercase opacity-90">{profile.bio}</p>}
 
            <div className="w-full mt-4 space-y-4">
-             <div
-               className={`w-full text-center font-semibold transition-transform ${buttonSizeFontClass(profile.buttonSize)}`}
-               style={{
-                 backgroundColor: profile.buttonColor,
-                 color: profile.buttonTextColor,
-                 borderRadius: profile.buttonStyle === 'rounded' ? '9999px' : profile.buttonStyle === 'square' ? '0.5rem' : '0',
-                 padding: buttonSizePadding(profile.buttonSize),
-               }}
-             >
-               Sample Link 1
-             </div>
-             <div
-               className={`w-full text-center font-semibold transition-transform ${buttonSizeFontClass(profile.buttonSize)}`}
-               style={{
-                 backgroundColor: profile.buttonColor,
-                 color: profile.buttonTextColor,
-                 borderRadius: profile.buttonStyle === 'rounded' ? '9999px' : profile.buttonStyle === 'square' ? '0.5rem' : '0',
-                 padding: buttonSizePadding(profile.buttonSize),
-               }}
-             >
-               Sample Link 2
-             </div>
+             {['Sample Link 1', 'Sample Link 2'].map((label) => (
+               <div
+                 key={label}
+                 className={`w-full text-center font-semibold transition-transform ${buttonSizeFontClass(profile.buttonSize)}`}
+                 style={{
+                   backgroundColor: profile.buttonStyle === 'outline' ? 'transparent' : profile.buttonColor,
+                   color: profile.buttonStyle === 'outline' ? profile.buttonColor : profile.buttonTextColor,
+                   border: profile.buttonStyle === 'outline' ? `2px solid ${profile.buttonColor}` : 'none',
+                   borderRadius: profile.buttonStyle === 'rounded' || profile.buttonStyle === 'outline' ? '9999px' : profile.buttonStyle === 'square' ? '0.5rem' : '0',
+                   padding: buttonSizePadding(profile.buttonSize),
+                 }}
+               >
+                 {label}
+               </div>
+             ))}
            </div>
         </div>
       </div>

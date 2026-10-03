@@ -1,27 +1,22 @@
-import { findOne } from '@/lib/db'
+import { findOne, findMany } from '@/lib/db'
 import type { Product } from '@/lib/types'
-import { getCatalogProductBySlug, CATALOG_PRODUCTS, type CatalogItem } from '@/lib/catalog'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Star, Truck, ShieldCheck, RefreshCw, Zap, CreditCard,
+  Truck, RefreshCw, CreditCard,
   ChevronRight, Sparkles, CheckCircle, Info,
 } from 'lucide-react'
 import ProductActions from './ProductActions'
 import ProductGallery from './ProductGallery'
 import { ShopHeader } from '@/components/ShopHeader'
-import { fallbackVisual, getCategoryVisual } from '@/lib/productVisual'
 import { ProductCard, type GridProduct } from '../ProductCard'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  let product: Product | CatalogItem | null = null
+  let product: Product | null = null
   try {
     product = await findOne<Product>('Product', { slug })
   } catch {}
-  if (!product) {
-    product = getCatalogProductBySlug(slug) || null
-  }
   if (!product) return { title: 'Product Not Found | TapConnect' }
 
   return {
@@ -32,21 +27,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  let product: Product | CatalogItem | null = null
+  let product: Product | null = null
 
   try {
     product = await findOne<Product>('Product', { slug })
   } catch {}
 
-  if (!product) {
-    product = getCatalogProductBySlug(slug) || null
-  }
-
   if (!product || product.availability === 'hidden') {
     notFound()
   }
 
-  const catItem = getCatalogProductBySlug(slug)
   const colors: string[] = product.colors
     ? typeof product.colors === 'string'
       ? JSON.parse(product.colors)
@@ -58,24 +48,24 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       : product.images
     : []
 
-  const fallback = fallbackVisual(product.category)
-  const catVisual = getCategoryVisual(product.category)
-
   const priceRegular = Number(product.priceRegular) || 15000
   const priceSale = product.priceSale ? Number(product.priceSale) : null
   const currentPrice = priceSale ?? priceRegular
   const discountPct = priceSale ? Math.round((1 - priceSale / priceRegular) * 100) : 0
-  const rating = catItem?.rating ?? 4.9
-  const reviewCount = catItem?.reviewCount ?? 128
 
-  // Related products from same category or random fallback
-  const relatedCatalog = CATALOG_PRODUCTS.filter(
-    (p) => p.slug !== slug && (p.category === product?.category || true)
-  ).slice(0, 5)
+  // Related products: other real products in the same category.
+  let relatedProducts: Product[] = []
+  try {
+    relatedProducts = (await findMany<Product>('Product', { where: { category: product.category } }))
+      .filter((p) => p.slug !== slug && p.availability !== 'hidden')
+      .slice(0, 5)
+  } catch {}
 
-  const relatedGridProducts: GridProduct[] = relatedCatalog.map((p) => {
+  const relatedGridProducts: GridProduct[] = relatedProducts.map((p) => {
     const pImages = p.images ? (typeof p.images === 'string' ? JSON.parse(p.images) : p.images) : []
     const pColors = p.colors ? (typeof p.colors === 'string' ? JSON.parse(p.colors) : p.colors) : []
+    const pPriceRegular = Number(p.priceRegular) || 15000
+    const pPriceSale = p.priceSale ? Number(p.priceSale) : null
 
     return {
       id: p.id,
@@ -83,19 +73,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       name: p.name,
       subtitle: p.subtitle,
       category: p.category,
-      brand: p.brand,
+      brand: 'TapConnect',
       image: pImages[0] || null,
       colors: pColors,
-      priceRegular: p.priceRegular,
-      priceSale: p.priceSale,
-      customizationPrice: p.customizationPrice,
-      discountPct: p.priceSale ? Math.round((1 - p.priceSale / p.priceRegular) * 100) : 0,
-      isBestSeller: p.reviewCount > 150,
+      priceRegular: pPriceRegular,
+      priceSale: pPriceSale,
+      customizationPrice: Number(p.customizationPrice) || 0,
+      discountPct: pPriceSale ? Math.round((1 - pPriceSale / pPriceRegular) * 100) : 0,
+      isBestSeller: false,
       isNew: false,
-      isExpress: p.isExpress,
-      rating: p.rating,
-      reviewCount: p.reviewCount,
-      createdAt: p.createdAt.getTime(),
+      createdAt: p.createdAt instanceof Date ? p.createdAt.getTime() : new Date(p.createdAt).getTime(),
     }
   })
 
@@ -143,11 +130,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     <span className="bg-[#E8E5E0] text-[#181818] text-[11px] font-semibold px-2 py-0.5 rounded">
                       {product.category}
                     </span>
-                    {catItem?.isExpress && (
-                      <span className="bg-[#E8E5E0] text-[#181818] border border-[#D4D0C9] text-[11px] font-extrabold px-2 py-0.5 rounded flex items-center gap-1">
-                        <Zap size={11} className="fill-[#181818] text-[#181818]" /> TapConnect Express
-                      </span>
-                    )}
                   </div>
 
                   <h1 className="text-xl sm:text-2xl font-bold text-[#181818] leading-snug mb-2">
@@ -156,32 +138,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
                   {/* Subtitle */}
                   {product.subtitle && (
-                    <p className="text-xs sm:text-sm text-[#66635F] mb-3 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#66635F] mb-4 leading-relaxed">
                       {product.subtitle}
                     </p>
                   )}
-
-                  {/* Rating row */}
-                  <div className="flex items-center gap-3 pb-3 border-b border-[#D4D0C9] mb-4">
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={14}
-                          className={
-                            star <= Math.round(rating)
-                              ? 'fill-[#181818] text-[#181818]'
-                              : 'fill-[#D4D0C9] text-[#D4D0C9]'
-                          }
-                        />
-                      ))}
-                      <span className="text-xs font-bold text-[#181818] ml-1">{rating.toFixed(1)}</span>
-                    </div>
-                    <span className="text-xs text-[#66635F]">&middot;</span>
-                    <span className="text-xs text-[#181818] hover:underline cursor-pointer font-medium">
-                      {reviewCount} verified ratings
-                    </span>
-                  </div>
 
                   {/* Price Box */}
                   <div className="mb-4">
@@ -206,7 +166,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                       </p>
                     )}
                     <p className="text-[11px] text-[#66635F] mt-1 flex items-center gap-1">
-                      <CheckCircle size={12} className="text-[#181818]" /> In stock &middot; Ready for dispatch
+                      <CheckCircle size={12} className="text-[#181818]" />
+                      {(product.stock ?? 0) > 0 ? 'In stock · Ready for dispatch' : 'Made to order'}
                     </p>
                   </div>
 
@@ -219,21 +180,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                         {product.length && product.width ? ' x ' : ''}
                         {product.width ? `${product.width}cm W` : ''} &middot; Standard Card Profile
                       </span>
-                    </div>
-                  )}
-
-                  {/* Feature Highlights */}
-                  {catItem?.features && catItem.features.length > 0 && (
-                    <div className="mb-4">
-                      <p className="text-xs font-bold text-[#181818] uppercase tracking-wider mb-2">Key Highlights:</p>
-                      <ul className="space-y-1 text-xs text-[#66635F]">
-                        {catItem.features.map((feat) => (
-                          <li key={feat} className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#181818]" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
                     </div>
                   )}
                 </div>
@@ -291,19 +237,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 </div>
               </div>
 
-              {/* Express Badge */}
-              <div className="flex items-start gap-3 pt-2 border-t border-[#D4D0C9]">
-                <span className="p-2 rounded-md bg-[#E8E5E0] text-[#181818] shrink-0 mt-0.5">
-                  <Zap size={18} className="fill-[#181818]" />
-                </span>
-                <div>
-                  <p className="font-bold text-[#181818]">TapConnect Express</p>
-                  <p className="text-[#66635F] mt-0.5 leading-snug">
-                    Ready in factory warehouse for immediate dispatch.
-                  </p>
-                </div>
-              </div>
-
               {/* Return Policy */}
               <div className="flex items-start gap-3 pt-2 border-t border-[#D4D0C9]">
                 <span className="p-2 rounded-md bg-[#E8E5E0] text-[#181818] shrink-0 mt-0.5">
@@ -340,39 +273,33 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <p className="font-extrabold text-[#181818] text-sm">TapConnect Official Store</p>
                 <p className="text-[#66635F] text-[11px]">Certified Smart Hardware Manufacturer</p>
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#D4D0C9] text-[11px]">
-                <span className="text-[#66635F]">Seller Score:</span>
-                <span className="font-bold text-[#181818]">99% Positive</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-[#66635F]">Order Fulfillment:</span>
-                <span className="font-bold text-[#181818]">Excellent</span>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Related Products Shelf */}
-        <div className="mt-8 bg-white rounded-lg border border-[#D4D0C9] shadow-sm p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#D4D0C9]">
-            <h2 className="text-base sm:text-lg font-bold text-[#181818] flex items-center gap-2">
-              <Sparkles size={18} className="text-[#181818]" />
-              Customers Also Viewed
-            </h2>
-            <Link
-              href="/marketplace#catalog"
-              className="text-xs font-bold text-[#181818] hover:underline uppercase"
-            >
-              See All 100 Products &rarr;
-            </Link>
-          </div>
+        {relatedGridProducts.length > 0 && (
+          <div className="mt-8 bg-white rounded-lg border border-[#D4D0C9] shadow-sm p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#D4D0C9]">
+              <h2 className="text-base sm:text-lg font-bold text-[#181818] flex items-center gap-2">
+                <Sparkles size={18} className="text-[#181818]" />
+                Customers Also Viewed
+              </h2>
+              <Link
+                href="/marketplace#catalog"
+                className="text-xs font-bold text-[#181818] hover:underline uppercase"
+              >
+                See All Products &rarr;
+              </Link>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            {relatedGridProducts.map((p) => (
-              <ProductCard key={p.id} p={p} layout="grid" />
-            ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+              {relatedGridProducts.map((p) => (
+                <ProductCard key={p.id} p={p} layout="grid" />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   )

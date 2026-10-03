@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+ import { NextRequest, NextResponse } from 'next/server'
 import { findOne } from '@/lib/db'
 import { verifyPassword, generateToken } from '@/lib/auth'
 import { cookies } from 'next/headers'

@@ -4,7 +4,7 @@
 // "type": "module" and Passenger invokes this file directly with `node`.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createServer } = require('http')
-const { readFileSync, existsSync, rmSync, openSync, closeSync } = require('fs')
+const { readFileSync, existsSync, rmSync, openSync, closeSync, statSync } = require('fs')
 const { join } = require('path')
 const { execSync } = require('child_process')
 
@@ -44,16 +44,38 @@ function selfExtractIfMissing() {
   // be uncaught (crashing the process, which Passenger just respawned into
   // the same race forever). An exclusive lock file serializes the actual
   // extraction; any process that loses the race just waits for the winner.
-  let haveLock = false
-  try {
-    closeSync(openSync(lockFile, 'wx'))
-    haveLock = true
-  } catch (err) {
-    if (err.code !== 'EEXIST') {
-      console.error('[self-extract] lock acquire failed: ' + err.message)
-      return
+  //
+  // The lock itself can go stale: if the holder gets SIGKILLed mid-extraction
+  // (seen in practice — Passenger's startup timeout killing a slow tar run),
+  // its `finally` cleanup never runs and the lock file is orphaned forever,
+  // deadlocking every future boot (each one waits out the timeout, gives up
+  // with hasRealBuild=false, and crashes on the missing build — forever).
+  // Treating a lock older than STALE_MS as abandoned and stealing it recovers
+  // from that without needing a manual fix on the server.
+  const STALE_MS = 45000
+  function acquireLock() {
+    try {
+      closeSync(openSync(lockFile, 'wx'))
+      return true
+    } catch (err) {
+      if (err.code !== 'EEXIST') {
+        console.error('[self-extract] lock acquire failed: ' + err.message)
+        return false
+      }
+      try {
+        const age = Date.now() - statSync(lockFile).mtimeMs
+        if (age > STALE_MS) {
+          console.error('[self-extract] lock is stale (' + Math.round(age / 1000) + 's old) — stealing it')
+          rmSync(lockFile, { force: true })
+          closeSync(openSync(lockFile, 'wx'))
+          return true
+        }
+      } catch {}
+      return false
     }
   }
+
+  const haveLock = acquireLock()
 
   if (!haveLock) {
     console.error('[self-extract] lock held by another process — waiting for it to finish')

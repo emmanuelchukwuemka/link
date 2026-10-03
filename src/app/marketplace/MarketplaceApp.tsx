@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Search, SlidersHorizontal, LayoutGrid, List, Flame, Zap,
+  Search, SlidersHorizontal, LayoutGrid, List, Flame,
   ShieldCheck, Truck, ArrowRight, ChevronRight, ChevronLeft, ChevronDown,
-  RefreshCw, Star, X, Filter, Sparkles, Check,
-  CreditCard, CircleDot, Store,
-  Trees, Shield, Tag,
+  RefreshCw, X, Filter, Sparkles, Check,
+  CreditCard, Tag,
 } from 'lucide-react'
 import { ProductCard, type GridProduct } from './ProductCard'
 import { getCategoryVisual } from '@/lib/productVisual'
@@ -23,61 +22,27 @@ function flattenCategories(nodes: CategoryNode[]): { name: string }[] {
   return out
 }
 
-type SortOption = 'popularity' | 'price-asc' | 'price-desc' | 'rating' | 'newest' | 'discount'
+type SortOption = 'popularity' | 'price-asc' | 'price-desc' | 'newest' | 'discount'
 
 const SORT_LABELS: Record<SortOption, string> = {
   popularity: 'Popularity / Best Sellers',
   'price-asc': 'Price: Low to High',
   'price-desc': 'Price: High to Low',
-  rating: 'Customer Rating',
   newest: 'Newest Arrivals',
   discount: 'Discount: High to Low',
 }
 
 const HERO_SLIDES = [
   {
-    tag: 'TAPCONNECT SHOWCASE',
+    tag: 'TAPCONNECT CARDS',
     title: 'Your Digital Card,\nEveryday Freedom',
-    subtitle: 'Over 100 Smart NFC Cards, Rings & Metal Badges. Tap to share your verified profile instantly with zero apps required.',
-    badge: 'Up to 55% Off',
-    ctaText: 'Shop All 100 Products',
+    subtitle: 'Tap to share your verified TapConnect profile instantly with any phone, zero apps required.',
+    badge: 'Official Store',
+    ctaText: 'Shop TapConnect Cards',
     ctaHref: '#catalog',
     bgGradient: 'from-[#181818] via-[#181818] to-[#181818]',
     accentColor: '#D4D0C9',
     image: '/products/tapconnect-mini/1-hero.jpg',
-  },
-  {
-    tag: 'LUXURY METAL SERIES',
-    title: 'Aerospace Titanium &\n24K Gold NFC Cards',
-    subtitle: 'Precision laser-engraved heavyweight metal cards designed for founders, executives, and luxury realtors.',
-    badge: 'Free VIP Gift Box',
-    ctaText: 'Explore Metal Cards',
-    ctaHref: '#catalog?cat=Luxury+Metal+Cards',
-    bgGradient: 'from-[#181818] via-[#181818] to-[#181818]',
-    accentColor: '#D4D0C9',
-    image: '/step-1-card.jpg',
-  },
-  {
-    tag: 'NATURE & ECO LINE',
-    title: '100% Organic Bamboo &\nHardwood Smart Cards',
-    subtitle: 'Crafted from sustainable FSC bamboo and dark walnut timber. Organic warmth meets wireless NFC connectivity.',
-    badge: 'Zero Plastic Eco',
-    ctaText: 'Shop Eco Timber',
-    ctaHref: '#catalog?cat=Eco+Wooden+Cards',
-    bgGradient: 'from-[#181818] via-[#181818] to-[#181818]',
-    accentColor: '#D4D0C9',
-    image: '/step-1-card.jpg',
-  },
-  {
-    tag: 'CORPORATE FLEETS',
-    title: 'Equip Your Whole Team\nWith Smart Badges',
-    subtitle: 'Centralized admin portal, employee lead capture, CRM export, and unified branding for modern companies.',
-    badge: 'Enterprise Solutions',
-    ctaText: 'Explore Bundles',
-    ctaHref: '#catalog?cat=Executive+%26+Business+Bundles',
-    bgGradient: 'from-[#181818] via-[#181818] to-[#181818]',
-    accentColor: '#D4D0C9',
-    image: '/step-1-card.jpg',
   },
 ]
 
@@ -186,30 +151,13 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
   const [currentPage, setCurrentPage] = useState<number>(1)
 
   // Filters
-  const [expressOnly, setExpressOnly] = useState<boolean>(searchParams.get('express') === '1')
   const [inStockOnly, setInStockOnly] = useState<boolean>(false)
   const [minDiscount, setMinDiscount] = useState<number>(0)
-  const [minRating, setMinRating] = useState<number>(0)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 150000])
   const [tempMinPrice, setTempMinPrice] = useState<string>('0')
   const [tempMaxPrice, setTempMaxPrice] = useState<string>('150000')
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false)
   const [categoryMenuOpen, setCategoryMenuOpen] = useState<boolean>(false)
-
-  // Countdown timer for Flash Sale
-  const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 28, seconds: 45 })
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 }
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 }
-        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 }
-        return { hours: 12, minutes: 0, seconds: 0 }
-      })
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   // Hero carousel auto-play
   const [activeSlide, setActiveSlide] = useState(0)
@@ -238,7 +186,7 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
 
   // Featured sections
   const flashSaleProducts = useMemo(() => {
-    return products.filter((p) => p.isFlashSale || p.discountPct >= 30).slice(0, 12)
+    return products.filter((p) => p.discountPct >= 30).slice(0, 12)
   }, [products])
 
   const dealsUnder15k = useMemo(() => {
@@ -249,9 +197,7 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
   }, [products])
 
   const bestSellers = useMemo(() => {
-    return products
-      .filter((p) => p.isBestSeller || (p.rating ?? 0) >= 4.9)
-      .slice(0, 10)
+    return products.filter((p) => p.isBestSeller).slice(0, 10)
   }, [products])
 
   // Filtered catalog
@@ -270,17 +216,11 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
         if (!matchName && !matchSubtitle && !matchCategory && !matchBrand) return false
       }
 
-      // Express
-      if (expressOnly && !p.isExpress) return false
-
       // In stock
       if (inStockOnly && (p.stock ?? 0) <= 0) return false
 
       // Discount
       if (minDiscount > 0 && p.discountPct < minDiscount) return false
-
-      // Rating
-      if (minRating > 0 && (p.rating ?? 0) < minRating) return false
 
       // Price
       const currentPrice = p.priceSale ?? p.priceRegular
@@ -288,7 +228,7 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
 
       return true
     })
-  }, [products, selectedCategory, searchQuery, expressOnly, inStockOnly, minDiscount, minRating, priceRange])
+  }, [products, selectedCategory, searchQuery, inStockOnly, minDiscount, priceRange])
 
   // Sorted catalog
   const sortedProducts = useMemo(() => {
@@ -297,14 +237,12 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
       list.sort((a, b) => (a.priceSale ?? a.priceRegular) - (b.priceSale ?? b.priceRegular))
     } else if (sortOption === 'price-desc') {
       list.sort((a, b) => (b.priceSale ?? b.priceRegular) - (a.priceSale ?? a.priceRegular))
-    } else if (sortOption === 'rating') {
-      list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     } else if (sortOption === 'newest') {
       list.sort((a, b) => b.createdAt - a.createdAt)
     } else if (sortOption === 'discount') {
       list.sort((a, b) => b.discountPct - a.discountPct)
     } else {
-      list.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0) || (b.reviewCount ?? 0) - (a.reviewCount ?? 0))
+      list.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0))
     }
     return list
   }, [filteredProducts, sortOption])
@@ -327,10 +265,8 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
   const handleResetFilters = () => {
     setSelectedCategory('all')
     setSearchQuery('')
-    setExpressOnly(false)
     setInStockOnly(false)
     setMinDiscount(0)
-    setMinRating(0)
     setPriceRange([0, 150000])
     setTempMinPrice('0')
     setTempMaxPrice('150000')
@@ -341,10 +277,8 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
   const activeFilterCount =
     (selectedCategory !== 'all' ? 1 : 0) +
     (searchQuery ? 1 : 0) +
-    (expressOnly ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
     (minDiscount > 0 ? 1 : 0) +
-    (minRating > 0 ? 1 : 0) +
     (priceRange[0] > 0 || priceRange[1] < 150000 ? 1 : 0)
 
   const slide = HERO_SLIDES[activeSlide]
@@ -515,7 +449,7 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
         ))}
       </section>
 
-      {/* 4. 🔥 FLASH SALES SECTION */}
+      {/* 4. DEALS SECTION */}
       <section id="flash-sales" className="scroll-mt-24">
         <div className="bg-[#181818] text-white rounded-t-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-3 border border-b-0 border-[#D4D0C9]/20">
           <div className="flex items-center gap-3">
@@ -523,25 +457,8 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
               <Flame size={20} className="fill-white text-white" />
             </span>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-xl font-bold uppercase tracking-wider">FLASH SALES</h2>
-                <span className="bg-white text-black text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">
-                  LIMITED STOCK
-                </span>
-              </div>
-              <p className="text-[11px] text-[#D4D0C9]">Grab top smart cards &amp; tags at up to 55% off before time expires</p>
-            </div>
-          </div>
-
-          {/* Countdown Clock */}
-          <div className="flex items-center gap-2 bg-[#181818] px-3.5 py-1.5 rounded-md border border-[#D4D0C9]/20">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#D4D0C9]">Time Left:</span>
-            <div className="flex items-center gap-1 font-mono font-black text-sm sm:text-base">
-              <span className="bg-black px-2 py-0.5 rounded text-white">{String(timeLeft.hours).padStart(2, '0')}h</span>
-              <span>:</span>
-              <span className="bg-black px-2 py-0.5 rounded text-white">{String(timeLeft.minutes).padStart(2, '0')}m</span>
-              <span>:</span>
-              <span className="bg-black px-2 py-0.5 rounded text-[#D4D0C9]">{String(timeLeft.seconds).padStart(2, '0')}s</span>
+              <h2 className="text-base sm:text-xl font-bold uppercase tracking-wider">DEALS</h2>
+              <p className="text-[11px] text-[#D4D0C9]">Discounted TapConnect hardware, while stock lasts</p>
             </div>
           </div>
         </div>
@@ -560,42 +477,6 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
         </div>
       </section>
 
-      {/* 5. BRAND SPOTLIGHT */}
-      <section id="brands" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {[
-          { title: 'Titanium Metal Series', desc: 'Laser engraved luxury cards', cat: 'Luxury Metal Cards', icon: Shield, badge: 'VIP Choice' },
-          { title: 'Eco Bamboo Nature', desc: '100% Organic timber NFC', cat: 'Eco Wooden Cards', icon: Trees, badge: 'Zero Plastic' },
-          { title: 'Smart Wearables & Rings', desc: 'Waterproof bands & ceramic rings', cat: 'Smart Rings', icon: CircleDot, badge: 'No Charging' },
-          { title: 'Enterprise Hub Stands', desc: 'Counter QR stands & fleet cards', cat: 'Desk Stands & QR Displays', icon: Store, badge: 'For Retail' },
-        ].map((brand) => {
-          const Icon = brand.icon
-          return (
-            <button
-              key={brand.title}
-              onClick={() => {
-                setSelectedCategory(brand.cat)
-                setCurrentPage(1)
-                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' })
-              }}
-              className="group text-left p-4 sm:p-5 rounded-lg bg-[#181818] text-white shadow-xs border border-[#D4D0C9]/20 hover:border-white transition-all flex flex-col justify-between min-h-[130px]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <Icon size={16} />
-                </span>
-                <span className="text-[10px] font-bold text-white bg-white/10 px-2 py-0.5 rounded border border-white/20">
-                  {brand.badge}
-                </span>
-              </div>
-              <div className="mt-3">
-                <h3 className="font-bold text-xs sm:text-sm text-white transition-colors">{brand.title}</h3>
-                <p className="text-[11px] text-[#D4D0C9] line-clamp-1">{brand.desc}</p>
-              </div>
-            </button>
-          )
-        })}
-      </section>
-
       {/* 6. TOP DEALS UNDER ₦15,000 */}
       <section id="deals-under-15k">
         <HorizontalShelf
@@ -612,8 +493,8 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
       {/* 7. BEST SELLERS */}
       <section>
         <HorizontalShelf
-          title="Best Sellers Across Nigeria"
-          subtitle="Top rated digital cards trusted by 10,000+ professionals"
+          title="Best Sellers"
+          subtitle="Our most popular TapConnect cards"
           icon={Sparkles}
           badgeText="Customer Favorites"
           badgeBg="bg-[#181818]"
@@ -706,12 +587,6 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
                 <button onClick={() => setSearchQuery('')} className="hover:text-black"><X size={12} /></button>
               </span>
             )}
-            {expressOnly && (
-              <span className="inline-flex items-center gap-1 bg-black text-white px-2 py-1 rounded-md font-bold">
-                ⚡ Express Only
-                <button onClick={() => setExpressOnly(false)} className="hover:text-[#D4D0C9]"><X size={12} /></button>
-              </span>
-            )}
             {inStockOnly && (
               <span className="inline-flex items-center gap-1 bg-white border border-[#D4D0C9] px-2 py-1 rounded-md text-[#181818] font-medium">
                 In Stock Only
@@ -781,29 +656,7 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
               </div>
             </div>
 
-            {/* 2. Express Delivery */}
-            <div className="pt-4 border-t border-[#D4D0C9]">
-              <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-2.5">
-                Express Delivery
-              </h3>
-              <label className="flex items-center gap-2 cursor-pointer select-none p-2 bg-[#E8E5E0] rounded-md border border-[#D4D0C9]">
-                <input
-                  type="checkbox"
-                  checked={expressOnly}
-                  onChange={(e) => {
-                    setExpressOnly(e.target.checked)
-                    setCurrentPage(1)
-                  }}
-                  className="accent-[#181818] w-4 h-4 rounded"
-                />
-                <span className="font-bold text-[#181818] text-xs flex items-center gap-1">
-                  <Zap size={13} className="fill-[#181818] text-[#181818]" />
-                  TapConnect Express Only
-                </span>
-              </label>
-            </div>
-
-            {/* 3. Price Filter */}
+            {/* 2. Price Filter */}
             <div className="pt-4 border-t border-[#D4D0C9]">
               <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-2.5">
                 Price (&#8358;)
@@ -835,7 +688,7 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
               </form>
             </div>
 
-            {/* 4. Discount Filter */}
+            {/* 3. Discount Filter */}
             <div className="pt-4 border-t border-[#D4D0C9]">
               <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-2">
                 Discount Percentage
@@ -854,34 +707,6 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
                   >
                     <span>{disc}% or more</span>
                     {minDiscount === disc && <Check size={13} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 5. Customer Rating */}
-            <div className="pt-4 border-t border-[#D4D0C9]">
-              <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-2">
-                Customer Rating
-              </h3>
-              <div className="space-y-1">
-                {[4, 3].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => {
-                      setMinRating(minRating === star ? 0 : star)
-                      setCurrentPage(1)
-                    }}
-                    className={`w-full text-left px-2 py-1 rounded flex items-center gap-1.5 transition-colors ${
-                      minRating === star ? 'bg-[#E8E5E0] text-[#181818] font-bold border border-[#D4D0C9]' : 'text-[#66635F] hover:bg-[#E8E5E0]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-0.5 text-[#181818]">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} size={11} className={s <= star ? 'fill-[#181818] text-[#181818]' : 'text-[#D4D0C9]'} />
-                      ))}
-                    </div>
-                    <span>&amp; above</span>
                   </button>
                 ))}
               </div>
@@ -1042,19 +867,6 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
                 </div>
               </div>
 
-              {/* Express */}
-              <div className="pt-3 border-t border-[#D4D0C9]">
-                <label className="flex items-center gap-2 p-2 bg-[#E8E5E0] rounded border border-[#D4D0C9] font-bold text-[#181818]">
-                  <input
-                    type="checkbox"
-                    checked={expressOnly}
-                    onChange={(e) => setExpressOnly(e.target.checked)}
-                    className="accent-[#181818]"
-                  />
-                  <span>⚡ Express Delivery Only</span>
-                </label>
-              </div>
-
               {/* Price */}
               <div className="pt-3 border-t border-[#D4D0C9]">
                 <h4 className="font-bold text-[#181818] uppercase text-[11px] mb-2">Price (&#8358;)</h4>
@@ -1175,7 +987,6 @@ export function MarketplaceApp({ products, categories }: { products: GridProduct
             <h4 className="text-white font-bold uppercase tracking-wider text-[11px] mb-3">BUYING ON TAPCONNECT</h4>
             <ul className="space-y-2">
               <li><a href="#flash-sales" className="hover:text-white transition-colors">Flash Sales &amp; Deals</a></li>
-              <li><a href="#catalog?express=1" className="hover:text-white transition-colors">TapConnect Express Delivery</a></li>
               <li><Link href="/wishlist" className="hover:text-white transition-colors">Saved Wishlist Items</Link></li>
               <li><Link href="/checkout" className="hover:text-white transition-colors">Cart &amp; Checkout</Link></li>
             </ul>

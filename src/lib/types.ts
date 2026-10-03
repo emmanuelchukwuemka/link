@@ -14,6 +14,7 @@ export interface User {
   bio: string | null
   aboutText: string | null
   avatarUrl: string | null
+  showAvatar: boolean
   phone: string | null
   whatsapp: string | null
   website: string | null

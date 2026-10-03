@@ -5,7 +5,7 @@ import { isProActive, FREE_TEMPLATE, FREE_FONT } from '@/lib/subscription'
 import type { User } from '@/lib/types'
 
 const ALLOWED_FIELDS = [
-  'displayName', 'jobTitle', 'department', 'bio', 'aboutText', 'avatarUrl',
+  'displayName', 'jobTitle', 'department', 'bio', 'aboutText', 'avatarUrl', 'showAvatar',
   'phone', 'whatsapp', 'website', 'address', 'businessHours', 'leadFormEnabled',
   'theme', 'template', 'bgType', 'bgColor', 'bgGradient', 'bgImage',
   'buttonStyle', 'buttonSize', 'buttonColor', 'buttonTextColor', 'fontFamily', 'textColor',
