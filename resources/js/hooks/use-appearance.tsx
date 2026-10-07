@@ -18,12 +18,13 @@ const handleSystemThemeChange = () => {
 };
 
 export function initializeTheme() {
-    const savedAppearance = (localStorage.getItem('appearance') as Appearance) || 'system';
-
-    applyTheme(savedAppearance);
-
-    // Add the event listener for system theme changes...
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    // TapConnect has no dark mode of its own — every page ported from the old
+    // Next.js app assumes a fixed light theme and several elements rely on
+    // implicit (not explicit) text color, which goes invisible against white
+    // backgrounds if the starter kit's "system" dark-mode auto-detection ever
+    // kicks in from the OS/browser preference. Force light unconditionally
+    // rather than auditing every page for an explicit color class.
+    applyTheme('light');
 }
 
 export function useAppearance() {

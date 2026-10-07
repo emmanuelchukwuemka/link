@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Category;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class StoreCategoryController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $categories = Category::where('scope', 'store')
+            ->where('user_id', $request->user()->id)
+            ->orderBy('position')
+            ->get();
+
+        return response()->json(['categories' => $categories]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $name = trim((string) $request->input('name'));
+        if ($name === '') {
+            return response()->json(['error' => 'Category name is required'], 400);
+        }
+
+        $user = $request->user();
+        $lastPosition = Category::where('scope', 'store')->where('user_id', $user->id)->max('position');
+
+        try {
+            $category = Category::create([
+                'name' => $name,
+                'scope' => 'store',
+                'user_id' => $user->id,
+                'position' => $lastPosition === null ? 0 : $lastPosition + 1,
+            ]);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return response()->json(['error' => 'That category already exists'], 409);
+            }
+            throw $e;
+        }
+
+        return response()->json(['category' => $category], 201);
+    }
+
+    public function destroy(Request $request, Category $category): JsonResponse
+    {
+        if ($category->scope !== 'store' || $category->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Category not found'], 404);
+        }
+
+        $category->delete();
+
+        return response()->json(['success' => true]);
+    }
+}

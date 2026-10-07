@@ -1,0 +1,862 @@
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { Link } from '@inertiajs/react';
+import {
+    Search,
+    SlidersHorizontal,
+    LayoutGrid,
+    List,
+    Flame,
+    ShieldCheck,
+    Truck,
+    ArrowRight,
+    ChevronRight,
+    ChevronLeft,
+    ChevronDown,
+    RefreshCw,
+    X,
+    Filter,
+    Sparkles,
+    Check,
+    CreditCard,
+    Tag,
+} from 'lucide-react';
+import { ProductCard, type GridProduct } from '@/components/product-card';
+import { getCategoryVisual } from '@/lib/productVisual';
+import type { CategoryNode } from '@/lib/categoryTree';
+
+function flattenCategories(nodes: CategoryNode[]): { name: string }[] {
+    const out: { name: string }[] = [];
+    for (const n of nodes) {
+        out.push({ name: n.name });
+        for (const child of n.children) out.push({ name: child.name });
+    }
+    return out;
+}
+
+type SortOption = 'popularity' | 'price-asc' | 'price-desc' | 'newest' | 'discount';
+
+const SORT_LABELS: Record<SortOption, string> = {
+    popularity: 'Popularity / Best Sellers',
+    'price-asc': 'Price: Low to High',
+    'price-desc': 'Price: High to Low',
+    newest: 'Newest Arrivals',
+    discount: 'Discount: High to Low',
+};
+
+const HERO_SLIDES = [
+    {
+        tag: 'TAPCONNECT CARDS',
+        title: 'Your Digital Card,\nEveryday Freedom',
+        subtitle: 'Tap to share your verified TapConnect profile instantly with any phone, zero apps required.',
+        badge: 'Official Store',
+        ctaText: 'Shop TapConnect Cards',
+        ctaHref: '#catalog',
+        bgGradient: 'from-[#181818] via-[#181818] to-[#181818]',
+        accentColor: '#D4D0C9',
+        image: '/products/tapconnect-mini/1-hero.jpg',
+    },
+];
+
+const TRUST_PILLARS = [
+    { icon: Truck, title: 'TapConnect Express', body: 'Fast delivery across Lagos, Abuja, PH & Nationwide' },
+    { icon: ShieldCheck, title: '100% Authentic Guaranteed', body: 'Direct factory hardware with warranty protection' },
+    { icon: CreditCard, title: 'Secure Paystack Checkout', body: 'Bank Transfer, Card, USSD, Apple Pay & Instant Receipt' },
+    { icon: RefreshCw, title: '7-Day Easy Replacement', body: 'Hassle-free guarantee on all smart hardware' },
+];
+
+function HorizontalShelf({
+    title,
+    subtitle,
+    icon: Icon,
+    badgeText,
+    badgeBg = 'bg-[#181818]',
+    viewAllHref = '#catalog',
+    products,
+    layout = 'flash',
+}: {
+    title: string;
+    subtitle?: string;
+    icon?: React.ElementType;
+    badgeText?: string;
+    badgeBg?: string;
+    viewAllHref?: string;
+    products: GridProduct[];
+    layout?: 'flash' | 'grid';
+}) {
+    const scrollerRef = useRef<HTMLDivElement>(null);
+
+    const scroll = (dir: 1 | -1) => {
+        scrollerRef.current?.scrollBy({ left: dir * 300, behavior: 'smooth' });
+    };
+
+    if (products.length === 0) return null;
+
+    return (
+        <div className="bg-white rounded-lg border border-[#D4D0C9] shadow-xs p-4 mb-5">
+            <div className="flex items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-[#D4D0C9] flex-wrap">
+                <div className="flex items-center gap-2">
+                    {Icon && <Icon size={20} className="text-[#181818]" />}
+                    <h2 className="text-base sm:text-lg font-bold text-[#181818]">{title}</h2>
+                    {badgeText && <span className={`${badgeBg} text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider`}>{badgeText}</span>}
+                    {subtitle && <span className="text-xs text-[#66635F] hidden md:inline">&middot; {subtitle}</span>}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <a href={viewAllHref} className="text-xs font-bold text-[#181818] hover:text-[#66635F] flex items-center gap-1 uppercase tracking-wide hover:underline transition-colors">
+                        See All <ChevronRight size={14} />
+                    </a>
+                    <div className="hidden sm:flex items-center gap-1 ml-2">
+                        <button onClick={() => scroll(-1)} aria-label="Scroll left" className="w-7 h-7 rounded-full bg-[#E8E5E0] border border-[#D4D0C9] hover:bg-[#D4D0C9] flex items-center justify-center text-[#181818] transition-colors">
+                            <ChevronLeft size={16} />
+                        </button>
+                        <button onClick={() => scroll(1)} aria-label="Scroll right" className="w-7 h-7 rounded-full bg-[#E8E5E0] border border-[#D4D0C9] hover:bg-[#D4D0C9] flex items-center justify-center text-[#181818] transition-colors">
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div ref={scrollerRef} className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {products.map((p) => (
+                    <ProductCard key={p.id} p={p} layout={layout} className="w-[160px] sm:w-[210px] md:w-[225px] shrink-0 snap-start" />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function MarketplaceApp({ products, categories }: { products: GridProduct[]; categories: CategoryNode[] }) {
+    const initialParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const [selectedCategory, setSelectedCategory] = useState<string>(initialParams.get('cat') || 'all');
+    const [searchQuery, setSearchQuery] = useState<string>(initialParams.get('q') || '');
+    const [sortOption, setSortOption] = useState<SortOption>('popularity');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [itemsPerPage, setItemsPerPage] = useState<number>(24);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+
+    const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+    const [minDiscount, setMinDiscount] = useState<number>(0);
+    const [priceRange, setPriceRange] = useState<[number, number]>([0, 150000]);
+    const [tempMinPrice, setTempMinPrice] = useState<string>('0');
+    const [tempMaxPrice, setTempMaxPrice] = useState<string>('150000');
+    const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
+    const [categoryMenuOpen, setCategoryMenuOpen] = useState<boolean>(false);
+
+    const [activeSlide, setActiveSlide] = useState(0);
+
+    useEffect(() => {
+        const slideTimer = setInterval(() => {
+            setActiveSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+        }, 6000);
+        return () => clearInterval(slideTimer);
+    }, []);
+
+    const categoryCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        for (const p of products) {
+            counts.set(p.category, (counts.get(p.category) || 0) + 1);
+        }
+        return counts;
+    }, [products]);
+
+    const categoryList = useMemo(
+        () => [{ name: 'all', label: 'All Categories' }, ...flattenCategories(categories).map((c) => ({ name: c.name, label: c.name }))],
+        [categories],
+    );
+
+    const flashSaleProducts = useMemo(() => products.filter((p) => p.discountPct >= 30).slice(0, 12), [products]);
+
+    const dealsUnder15k = useMemo(
+        () =>
+            products
+                .filter((p) => (p.priceSale ?? p.priceRegular) <= 15000)
+                .sort((a, b) => b.discountPct - a.discountPct)
+                .slice(0, 10),
+        [products],
+    );
+
+    const bestSellers = useMemo(() => products.filter((p) => p.isBestSeller).slice(0, 10), [products]);
+
+    const filteredProducts = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return products.filter((p) => {
+            if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
+
+            if (q) {
+                const matchName = p.name.toLowerCase().includes(q);
+                const matchSubtitle = (p.subtitle || '').toLowerCase().includes(q);
+                const matchCategory = p.category.toLowerCase().includes(q);
+                const matchBrand = (p.brand || '').toLowerCase().includes(q);
+                if (!matchName && !matchSubtitle && !matchCategory && !matchBrand) return false;
+            }
+
+            if (inStockOnly && (p.stock ?? 0) <= 0) return false;
+            if (minDiscount > 0 && p.discountPct < minDiscount) return false;
+
+            const currentPrice = p.priceSale ?? p.priceRegular;
+            if (currentPrice < priceRange[0] || currentPrice > priceRange[1]) return false;
+
+            return true;
+        });
+    }, [products, selectedCategory, searchQuery, inStockOnly, minDiscount, priceRange]);
+
+    const sortedProducts = useMemo(() => {
+        const list = [...filteredProducts];
+        if (sortOption === 'price-asc') {
+            list.sort((a, b) => (a.priceSale ?? a.priceRegular) - (b.priceSale ?? b.priceRegular));
+        } else if (sortOption === 'price-desc') {
+            list.sort((a, b) => (b.priceSale ?? b.priceRegular) - (a.priceSale ?? a.priceRegular));
+        } else if (sortOption === 'newest') {
+            list.sort((a, b) => b.createdAt - a.createdAt);
+        } else if (sortOption === 'discount') {
+            list.sort((a, b) => b.discountPct - a.discountPct);
+        } else {
+            list.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));
+        }
+        return list;
+    }, [filteredProducts, sortOption]);
+
+    const totalPages = Math.ceil(sortedProducts.length / itemsPerPage) || 1;
+    const paginatedProducts = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return sortedProducts.slice(start, start + itemsPerPage);
+    }, [sortedProducts, currentPage, itemsPerPage]);
+
+    const handleApplyPrice = (e: React.FormEvent) => {
+        e.preventDefault();
+        const min = Math.max(0, parseInt(tempMinPrice, 10) || 0);
+        const max = Math.max(min, parseInt(tempMaxPrice, 10) || 150000);
+        setPriceRange([min, max]);
+        setCurrentPage(1);
+    };
+
+    const handleResetFilters = () => {
+        setSelectedCategory('all');
+        setSearchQuery('');
+        setInStockOnly(false);
+        setMinDiscount(0);
+        setPriceRange([0, 150000]);
+        setTempMinPrice('0');
+        setTempMaxPrice('150000');
+        setSortOption('popularity');
+        setCurrentPage(1);
+    };
+
+    const activeFilterCount =
+        (selectedCategory !== 'all' ? 1 : 0) + (searchQuery ? 1 : 0) + (inStockOnly ? 1 : 0) + (minDiscount > 0 ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 150000 ? 1 : 0);
+
+    const slide = HERO_SLIDES[activeSlide];
+
+    return (
+        <div id="top" className="space-y-4 sm:space-y-6">
+            <section className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-3.5 items-stretch">
+                <aside className="hidden lg:block relative self-start" onMouseEnter={() => setCategoryMenuOpen(true)} onMouseLeave={() => setCategoryMenuOpen(false)}>
+                    <button
+                        onClick={() => setCategoryMenuOpen((o) => !o)}
+                        aria-expanded={categoryMenuOpen}
+                        className={`w-full flex items-center justify-between gap-2 px-3.5 py-3.5 bg-white rounded-lg border border-[#D4D0C9] shadow-xs text-sm font-bold text-[#181818] transition-colors ${categoryMenuOpen ? 'border-[#181818]' : 'hover:border-[#181818]/40'}`}
+                    >
+                        <span className="flex items-center gap-2 min-w-0">
+                            <LayoutGrid size={16} className="text-[#181818] shrink-0" />
+                            <span className="truncate">{selectedCategory === 'all' ? 'All Categories' : categoryList.find((c) => c.name === selectedCategory)?.label || 'All Categories'}</span>
+                        </span>
+                        <ChevronDown size={15} className={`text-[#66635F] shrink-0 transition-transform ${categoryMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {categoryMenuOpen && (
+                        <div className="absolute top-full left-0 mt-2 w-full min-w-[240px] bg-white rounded-lg border border-[#D4D0C9] shadow-xl z-30 p-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                            <div className="space-y-0.5 max-h-[60vh] overflow-y-auto pr-1">
+                                {categoryList.map((item) => {
+                                    const Icon = item.name === 'all' ? LayoutGrid : getCategoryVisual(item.name).icon;
+                                    const count = item.name === 'all' ? products.length : categoryCounts.get(item.name) || 0;
+                                    const isSelected = selectedCategory === item.name;
+
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            onClick={() => {
+                                                setSelectedCategory(item.name);
+                                                setCurrentPage(1);
+                                                setCategoryMenuOpen(false);
+                                                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+                                            }}
+                                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-semibold transition-all text-left ${
+                                                isSelected ? 'bg-[#181818] text-white shadow-xs' : 'text-[#181818] hover:bg-[#E8E5E0]'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Icon size={15} className={`shrink-0 ${isSelected ? 'text-white' : 'text-[#66635F]'}`} />
+                                                <span className="truncate">{item.label}</span>
+                                            </div>
+                                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full shrink-0 ${isSelected ? 'bg-white/20 text-white font-bold' : 'text-[#66635F]'}`}>{count}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="pt-2 mt-1 border-t border-[#D4D0C9] px-2 flex items-center justify-between text-[11px] text-[#66635F] font-medium">
+                                <span>Genuine NFC Tech</span>
+                                <span className="text-[#181818] font-bold">{products.length} Products</span>
+                            </div>
+                        </div>
+                    )}
+                </aside>
+
+                <div className={`relative overflow-hidden rounded-lg bg-gradient-to-br ${slide.bgGradient} text-white p-6 sm:p-9 flex flex-col justify-between min-h-[300px] sm:min-h-[380px] shadow-sm border border-[#D4D0C9]/20`}>
+                    {slide.image && (
+                        <>
+                            <img src={slide.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/20" />
+                        </>
+                    )}
+
+                    <div className="relative z-10 flex items-center justify-between gap-3">
+                        <span className="inline-block bg-[#181818] border border-[#D4D0C9]/20 text-[#FFFFFF] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded shadow-xs">{slide.tag}</span>
+                        <span className="text-xs font-bold text-[#FFFFFF] bg-white/10 px-2.5 py-0.5 rounded border border-white/20">{slide.badge}</span>
+                    </div>
+
+                    <div className="relative z-10 max-w-lg my-auto py-4">
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight mb-2.5 whitespace-pre-line tracking-tight text-white">{slide.title}</h1>
+                        <p className="text-[#D4D0C9] text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 leading-relaxed mb-5 max-w-md">{slide.subtitle}</p>
+                        <div className="flex items-center gap-3">
+                            <a href={slide.ctaHref} className="inline-flex items-center gap-2 bg-[#FFFFFF] hover:bg-[#E8E5E0] text-[#181818] text-xs sm:text-sm font-bold uppercase tracking-wider px-5 py-2.5 rounded shadow-sm transition-all active:scale-95">
+                                {slide.ctaText} <ArrowRight size={14} />
+                            </a>
+                            <a href="#flash-sales" className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 py-2.5 rounded border border-white/20 transition-colors">
+                                <Flame size={14} className="text-[#D4D0C9]" /> Flash Sales
+                            </a>
+                        </div>
+                    </div>
+
+                    <div className="relative z-10 flex items-center justify-between pt-2 border-t border-white/10">
+                        <div className="flex items-center gap-1.5">
+                            {HERO_SLIDES.map((_, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setActiveSlide(idx)}
+                                    aria-label={`Slide ${idx + 1}`}
+                                    className={`h-2 rounded-full transition-all ${idx === activeSlide ? 'w-6 bg-[#FFFFFF]' : 'w-2 bg-white/30 hover:bg-white/60'}`}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setActiveSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
+                                aria-label="Previous slide"
+                                className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            <button
+                                onClick={() => setActiveSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
+                                aria-label="Next slide"
+                                className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 bg-white rounded-lg border border-[#D4D0C9] shadow-xs p-3 sm:p-4">
+                {TRUST_PILLARS.map(({ icon: Icon, title, body }) => (
+                    <div key={title} className="flex items-center gap-3 p-1.5">
+                        <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8E5E0] border border-[#D4D0C9] text-[#181818] flex items-center justify-center shrink-0">
+                            <Icon size={18} />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="font-bold text-xs sm:text-sm text-[#181818] truncate leading-snug">{title}</p>
+                            <p className="text-[11px] text-[#66635F] line-clamp-1 leading-snug mt-0.5">{body}</p>
+                        </div>
+                    </div>
+                ))}
+            </section>
+
+            <section id="flash-sales" className="scroll-mt-24">
+                <div className="bg-[#181818] text-white rounded-t-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-3 border border-b-0 border-[#D4D0C9]/20">
+                    <div className="flex items-center gap-3">
+                        <span className="p-1.5 rounded-full bg-white/10">
+                            <Flame size={20} className="fill-white text-white" />
+                        </span>
+                        <div>
+                            <h2 className="text-base sm:text-xl font-bold uppercase tracking-wider">DEALS</h2>
+                            <p className="text-[11px] text-[#D4D0C9]">Discounted TapConnect hardware, while stock lasts</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-b-lg border-x border-b border-[#D4D0C9] p-3 sm:p-4 shadow-xs">
+                    <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {flashSaleProducts.map((p) => (
+                            <ProductCard key={p.id} p={p} layout="flash" className="w-[165px] sm:w-[210px] shrink-0 snap-start" />
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section id="deals-under-15k">
+                <HorizontalShelf title="Top Deals Under ₦15,000" subtitle="Best-value NFC cards, micro stickers and keychains" icon={Tag} badgeText="Value Picks" badgeBg="bg-[#181818]" products={dealsUnder15k} layout="flash" />
+            </section>
+
+            <section>
+                <HorizontalShelf title="Best Sellers" subtitle="Our most popular TapConnect cards" icon={Sparkles} badgeText="Customer Favorites" badgeBg="bg-[#181818]" products={bestSellers} layout="flash" />
+            </section>
+
+            <section id="catalog" className="scroll-mt-24">
+                <div className="bg-white rounded-t-lg border border-[#D4D0C9] shadow-xs p-3.5 sm:p-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <h2 className="text-base sm:text-xl font-extrabold text-[#181818] flex items-center gap-2">
+                            <span>All Products Catalog</span>
+                            <span className="text-xs font-semibold text-[#66635F]">
+                                ({sortedProducts.length} of {products.length} Products)
+                            </span>
+                        </h2>
+                        <p className="text-xs text-[#66635F] mt-0.5">Select your NFC Smart Card, Wearable, Stand or Accessory. Compatible with all iOS &amp; Android devices.</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap ml-auto">
+                        <button onClick={() => setMobileFilterOpen(true)} className="lg:hidden flex items-center gap-1.5 bg-[#E8E5E0] border border-[#D4D0C9] text-[#181818] text-xs font-bold px-3 py-2 rounded-md">
+                            <Filter size={14} />
+                            <span>Filters {activeFilterCount > 0 && `(${activeFilterCount})`}</span>
+                        </button>
+
+                        <div className="relative flex items-center">
+                            <span className="hidden sm:inline text-xs font-semibold text-[#66635F] mr-2">Sort By:</span>
+                            <div className="relative">
+                                <select
+                                    value={sortOption}
+                                    onChange={(e) => {
+                                        setSortOption(e.target.value as SortOption);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="appearance-none bg-[#E8E5E0] border border-[#D4D0C9] text-[#181818] font-bold text-xs rounded-md pl-3 pr-8 py-2 outline-none focus:border-[#181818] transition-colors"
+                                >
+                                    {Object.entries(SORT_LABELS).map(([key, label]) => (
+                                        <option key={key} value={key}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <SlidersHorizontal size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#66635F] pointer-events-none" />
+                            </div>
+                        </div>
+
+                        <div className="hidden sm:flex items-center rounded-md border border-[#D4D0C9] overflow-hidden bg-[#E8E5E0]">
+                            <button onClick={() => setViewMode('grid')} aria-label="Grid view" className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-[#181818] text-white' : 'text-[#66635F] hover:bg-[#D4D0C9]'}`}>
+                                <LayoutGrid size={15} />
+                            </button>
+                            <button onClick={() => setViewMode('list')} aria-label="List view" className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-[#181818] text-white' : 'text-[#66635F] hover:bg-[#D4D0C9]'}`}>
+                                <List size={15} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {activeFilterCount > 0 && (
+                    <div className="bg-[#E8E5E0] border-x border-b border-[#D4D0C9] px-4 py-2 flex items-center gap-2 flex-wrap text-xs">
+                        <span className="font-bold text-[#66635F]">Active Filters:</span>
+                        {selectedCategory !== 'all' && (
+                            <span className="inline-flex items-center gap-1 bg-white border border-[#D4D0C9] px-2 py-1 rounded-md text-[#181818] font-medium">
+                                {selectedCategory}
+                                <button onClick={() => setSelectedCategory('all')} className="hover:text-black">
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        )}
+                        {searchQuery && (
+                            <span className="inline-flex items-center gap-1 bg-white border border-[#D4D0C9] px-2 py-1 rounded-md text-[#181818] font-medium">
+                                &ldquo;{searchQuery}&rdquo;
+                                <button onClick={() => setSearchQuery('')} className="hover:text-black">
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        )}
+                        {inStockOnly && (
+                            <span className="inline-flex items-center gap-1 bg-white border border-[#D4D0C9] px-2 py-1 rounded-md text-[#181818] font-medium">
+                                In Stock Only
+                                <button onClick={() => setInStockOnly(false)} className="hover:text-black">
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        )}
+                        {minDiscount > 0 && (
+                            <span className="inline-flex items-center gap-1 bg-white border border-[#D4D0C9] px-2 py-1 rounded-md text-[#181818] font-medium">
+                                {minDiscount}%+ Off
+                                <button onClick={() => setMinDiscount(0)} className="hover:text-black">
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        )}
+                        {(priceRange[0] > 0 || priceRange[1] < 150000) && (
+                            <span className="inline-flex items-center gap-1 bg-white border border-[#D4D0C9] px-2 py-1 rounded-md text-[#181818] font-medium">
+                                &#8358;{priceRange[0].toLocaleString()} - &#8358;{priceRange[1].toLocaleString()}
+                                <button onClick={() => setPriceRange([0, 150000])} className="hover:text-black">
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        )}
+                        <button onClick={handleResetFilters} className="text-[#181818] hover:underline font-bold ml-auto">
+                            Clear All Filters
+                        </button>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 bg-white rounded-b-lg border-x border-b border-[#D4D0C9] p-4 shadow-xs">
+                    <aside className="hidden lg:block space-y-6 pr-2 border-r border-[#D4D0C9] text-xs">
+                        <div>
+                            <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-3">Category</h3>
+                            <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                                {categoryList.map((item) => {
+                                    const count = item.name === 'all' ? products.length : categoryCounts.get(item.name) || 0;
+                                    const isChecked = selectedCategory === item.name;
+
+                                    return (
+                                        <label
+                                            key={item.name}
+                                            onClick={() => {
+                                                setSelectedCategory(item.name);
+                                                setCurrentPage(1);
+                                            }}
+                                            className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#E8E5E0] cursor-pointer select-none text-[#181818]"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <input type="radio" name="category-radio" checked={isChecked} onChange={() => {}} className="accent-[#181818]" />
+                                                <span className={`truncate ${isChecked ? 'font-bold text-black' : 'text-[#66635F]'}`}>{item.label}</span>
+                                            </div>
+                                            <span className="text-[10px] text-[#66635F] font-mono">({count})</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-[#D4D0C9]">
+                            <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-2.5">Price (&#8358;)</h3>
+                            <form onSubmit={handleApplyPrice} className="space-y-2.5">
+                                <div className="flex items-center gap-2">
+                                    <input type="number" value={tempMinPrice} onChange={(e) => setTempMinPrice(e.target.value)} placeholder="Min" className="w-full px-2 py-1.5 rounded border border-[#D4D0C9] text-xs outline-none focus:border-[#181818]" />
+                                    <span className="text-[#66635F]">-</span>
+                                    <input type="number" value={tempMaxPrice} onChange={(e) => setTempMaxPrice(e.target.value)} placeholder="Max" className="w-full px-2 py-1.5 rounded border border-[#D4D0C9] text-xs outline-none focus:border-[#181818]" />
+                                </div>
+                                <button type="submit" className="w-full bg-[#181818] hover:bg-[#181818] text-white font-bold py-1.5 rounded text-xs transition-colors">
+                                    Apply Price
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="pt-4 border-t border-[#D4D0C9]">
+                            <h3 className="font-bold text-[#181818] uppercase tracking-wider text-[11px] mb-2">Discount Percentage</h3>
+                            <div className="space-y-1">
+                                {[50, 40, 30, 20, 10].map((disc) => (
+                                    <button
+                                        key={disc}
+                                        onClick={() => {
+                                            setMinDiscount(minDiscount === disc ? 0 : disc);
+                                            setCurrentPage(1);
+                                        }}
+                                        className={`w-full text-left px-2 py-1 rounded flex items-center justify-between transition-colors ${
+                                            minDiscount === disc ? 'bg-[#E8E5E0] text-[#181818] font-bold border border-[#D4D0C9]' : 'text-[#66635F] hover:bg-[#E8E5E0]'
+                                        }`}
+                                    >
+                                        <span>{disc}% or more</span>
+                                        {minDiscount === disc && <Check size={13} />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button onClick={handleResetFilters} className="w-full border border-[#D4D0C9] hover:border-black text-[#181818] font-bold py-2 rounded text-xs transition-colors">
+                            Reset All Filters
+                        </button>
+                    </aside>
+
+                    <div className="min-w-0 flex flex-col justify-between">
+                        {paginatedProducts.length === 0 ? (
+                            <div className="text-center py-20 bg-[#E8E5E0] rounded-lg border border-dashed border-[#D4D0C9] p-8">
+                                <Search size={36} className="mx-auto text-[#66635F] mb-3" />
+                                <h3 className="text-base font-bold text-[#181818] mb-1">No products match your current filters</h3>
+                                <p className="text-xs text-[#66635F] mb-4 max-w-sm mx-auto">Try clearing your search query, price range, or category filter to browse all products.</p>
+                                <button onClick={handleResetFilters} className="bg-[#181818] hover:bg-[#181818] text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded shadow-xs transition-colors">
+                                    View All Products
+                                </button>
+                            </div>
+                        ) : viewMode === 'list' ? (
+                            <div className="space-y-3">
+                                {paginatedProducts.map((p) => (
+                                    <ProductCard key={p.id} p={p} layout="list" />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                                {paginatedProducts.map((p) => (
+                                    <ProductCard key={p.id} p={p} layout="grid" />
+                                ))}
+                            </div>
+                        )}
+
+                        {sortedProducts.length > 0 && (
+                            <div className="mt-8 pt-5 border-t border-[#D4D0C9] flex items-center justify-between gap-4 flex-wrap">
+                                <div className="flex items-center gap-2 text-xs text-[#66635F]">
+                                    <span>Show per page:</span>
+                                    <select
+                                        value={itemsPerPage}
+                                        onChange={(e) => {
+                                            setItemsPerPage(Number(e.target.value));
+                                            setCurrentPage(1);
+                                        }}
+                                        className="bg-[#E8E5E0] border border-[#D4D0C9] rounded px-2 py-1 text-xs font-bold text-[#181818] outline-none"
+                                    >
+                                        <option value={16}>16</option>
+                                        <option value={24}>24</option>
+                                        <option value={48}>48</option>
+                                        <option value={100}>100 (All)</option>
+                                    </select>
+                                    <span>
+                                        Showing {Math.min(sortedProducts.length, (currentPage - 1) * itemsPerPage + 1)} - {Math.min(sortedProducts.length, currentPage * itemsPerPage)} of {sortedProducts.length} items
+                                    </span>
+                                </div>
+
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-1.5 ml-auto">
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage((p) => Math.max(1, p - 1));
+                                                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+                                            }}
+                                            disabled={currentPage === 1}
+                                            aria-label="Previous page"
+                                            className="px-3 py-1.5 rounded border border-[#D4D0C9] bg-white text-xs font-bold text-[#181818] hover:bg-[#E8E5E0] disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            &larr; Prev
+                                        </button>
+
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                                            <button
+                                                key={num}
+                                                onClick={() => {
+                                                    setCurrentPage(num);
+                                                    document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+                                                }}
+                                                className={`w-8 h-8 rounded text-xs font-bold transition-colors ${currentPage === num ? 'bg-[#181818] text-white shadow-xs' : 'border border-[#D4D0C9] bg-white text-[#181818] hover:bg-[#E8E5E0]'}`}
+                                            >
+                                                {num}
+                                            </button>
+                                        ))}
+
+                                        <button
+                                            onClick={() => {
+                                                setCurrentPage((p) => Math.min(totalPages, p + 1));
+                                                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+                                            }}
+                                            disabled={currentPage === totalPages}
+                                            aria-label="Next page"
+                                            className="px-3 py-1.5 rounded border border-[#D4D0C9] bg-white text-xs font-bold text-[#181818] hover:bg-[#E8E5E0] disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            Next &rarr;
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {mobileFilterOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden flex">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={() => setMobileFilterOpen(false)} />
+                    <div className="relative ml-auto w-full max-w-xs bg-white h-full shadow-2xl flex flex-col p-5 overflow-y-auto">
+                        <div className="flex items-center justify-between pb-3 border-b border-[#D4D0C9] mb-4">
+                            <h3 className="font-extrabold text-sm text-[#181818] uppercase">Filters</h3>
+                            <button onClick={() => setMobileFilterOpen(false)} className="w-8 h-8 rounded-full bg-[#E8E5E0] flex items-center justify-center text-[#181818]">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-5 text-xs">
+                            <div>
+                                <h4 className="font-bold text-[#181818] uppercase text-[11px] mb-2">Category</h4>
+                                <div className="space-y-1 max-h-48 overflow-y-auto">
+                                    {categoryList.map((item) => (
+                                        <button
+                                            key={item.name}
+                                            onClick={() => {
+                                                setSelectedCategory(item.name);
+                                                setCurrentPage(1);
+                                            }}
+                                            className={`w-full text-left px-2.5 py-1.5 rounded flex items-center justify-between ${selectedCategory === item.name ? 'bg-[#181818] text-white font-bold' : 'text-[#181818] hover:bg-[#E8E5E0]'}`}
+                                        >
+                                            <span>{item.label}</span>
+                                            {selectedCategory === item.name && <Check size={14} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-[#D4D0C9]">
+                                <h4 className="font-bold text-[#181818] uppercase text-[11px] mb-2">Price (&#8358;)</h4>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <input type="number" value={tempMinPrice} onChange={(e) => setTempMinPrice(e.target.value)} placeholder="Min" className="w-full px-2 py-1.5 border border-[#D4D0C9] rounded text-xs" />
+                                    <span>-</span>
+                                    <input type="number" value={tempMaxPrice} onChange={(e) => setTempMaxPrice(e.target.value)} placeholder="Max" className="w-full px-2 py-1.5 border border-[#D4D0C9] rounded text-xs" />
+                                </div>
+                                <button onClick={handleApplyPrice} className="w-full bg-[#181818] text-white font-bold py-1.5 rounded text-xs">
+                                    Apply Price
+                                </button>
+                            </div>
+
+                            <div className="pt-3 border-t border-[#D4D0C9]">
+                                <h4 className="font-bold text-[#181818] uppercase text-[11px] mb-2">Discount</h4>
+                                <div className="space-y-1">
+                                    {[40, 30, 20].map((d) => (
+                                        <button
+                                            key={d}
+                                            onClick={() => setMinDiscount(minDiscount === d ? 0 : d)}
+                                            className={`w-full text-left px-2 py-1 rounded ${minDiscount === d ? 'bg-[#E8E5E0] text-[#181818] font-bold border border-[#D4D0C9]' : 'text-[#66635F]'}`}
+                                        >
+                                            {d}% or more
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-[#D4D0C9] flex gap-2">
+                                <button onClick={handleResetFilters} className="flex-1 border border-[#D4D0C9] py-2.5 rounded font-bold text-[#181818] text-xs">
+                                    Reset
+                                </button>
+                                <button onClick={() => setMobileFilterOpen(false)} className="flex-1 bg-[#181818] text-white py-2.5 rounded font-bold text-xs">
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <footer className="bg-[#181818] text-white rounded-lg p-6 sm:p-10 mt-10 space-y-8 border border-[#D4D0C9]/15">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-[#D4D0C9]/15">
+                    <div>
+                        <span className="text-[#D4D0C9] font-bold text-xs uppercase tracking-wider">NEW TO TAPCONNECT?</span>
+                        <h3 className="text-xl sm:text-2xl font-bold mt-1 text-white">Subscribe to our newsletter for ₦2,000 Off</h3>
+                        <p className="text-[#D4D0C9] text-xs mt-1">Get flash sale updates, new smart card releases and exclusive corporate discounts.</p>
+                    </div>
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            alert('Thank you for subscribing! Your voucher code: TAPWELCOME');
+                        }}
+                        className="flex w-full md:w-auto min-w-[320px] max-w-md rounded-md overflow-hidden bg-white p-1"
+                    >
+                        <input type="email" placeholder="Enter your email address..." required className="px-3 py-2 text-xs sm:text-sm text-[#181818] outline-none flex-1 bg-transparent" />
+                        <button type="submit" className="bg-[#181818] hover:bg-[#181818] text-white font-bold text-xs uppercase tracking-wider px-5 py-2 rounded transition-colors">
+                            Subscribe
+                        </button>
+                    </form>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-xs text-[#D4D0C9]">
+                    <div>
+                        <h4 className="text-white font-bold uppercase tracking-wider text-[11px] mb-3">NEED HELP?</h4>
+                        <ul className="space-y-2">
+                            <li>
+                                <Link href="/#faq" className="hover:text-white transition-colors">
+                                    Help Center &amp; FAQs
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/track-order" className="hover:text-white transition-colors">
+                                    Track Your Order
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/#contact" className="hover:text-white transition-colors">
+                                    Contact Customer Care
+                                </Link>
+                            </li>
+                            <li>
+                                <a href="tel:08008272666" className="text-white font-bold">
+                                    0800-TAPCONNECT
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 className="text-white font-bold uppercase tracking-wider text-[11px] mb-3">ABOUT TAPCONNECT</h4>
+                        <ul className="space-y-2">
+                            <li>
+                                <Link href="/#about" className="hover:text-white transition-colors">
+                                    About Our Marketplace
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/terms" className="hover:text-white transition-colors">
+                                    Terms &amp; Conditions
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/privacy" className="hover:text-white transition-colors">
+                                    Privacy Policy
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/register?type=business" className="hover:text-white transition-colors">
+                                    Corporate Enterprise
+                                </Link>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 className="text-white font-bold uppercase tracking-wider text-[11px] mb-3">BUYING ON TAPCONNECT</h4>
+                        <ul className="space-y-2">
+                            <li>
+                                <a href="#flash-sales" className="hover:text-white transition-colors">
+                                    Flash Sales &amp; Deals
+                                </a>
+                            </li>
+                            <li>
+                                <Link href="/wishlist" className="hover:text-white transition-colors">
+                                    Saved Wishlist Items
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/checkout" className="hover:text-white transition-colors">
+                                    Cart &amp; Checkout
+                                </Link>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 className="text-white font-bold uppercase tracking-wider text-[11px] mb-3">PAYMENT &amp; LOGISTICS</h4>
+                        <p className="text-[11px] text-[#D4D0C9] leading-relaxed mb-3">We accept Paystack, Mastercard, Visa, Verve, and Bank Transfers across all 36 states in Nigeria.</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="bg-white/10 text-white font-mono text-[10px] px-2 py-1 rounded">PAYSTACK</span>
+                            <span className="bg-white/10 text-white font-mono text-[10px] px-2 py-1 rounded">VISA</span>
+                            <span className="bg-white/10 text-white font-mono text-[10px] px-2 py-1 rounded">MASTERCARD</span>
+                            <span className="bg-white/10 text-white font-mono text-[10px] px-2 py-1 rounded">VERVE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-6 border-t border-[#D4D0C9]/15 flex items-center justify-between text-[11px] text-[#66635F] flex-wrap gap-3">
+                    <p>&copy; {new Date().getFullYear()} TapConnect Nigeria. All rights reserved.</p>
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="hover:text-white transition-colors">
+                            Home
+                        </Link>
+                        <Link href="/marketplace" className="hover:text-white transition-colors">
+                            Marketplace
+                        </Link>
+                        <Link href="/login" className="hover:text-white transition-colors">
+                            Merchant Login
+                        </Link>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+}

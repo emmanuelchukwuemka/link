@@ -2,6 +2,29 @@
 
 @plugin 'tailwindcss-animate';
 
+/* Self-hosted selectable profile fonts (see resources/js/lib/profile/profileFonts.ts)
+   — ported from the old app's next/font/google setup, which self-hosted these
+   same fonts and exposed them as CSS variables for the same reason: a bare
+   fontFamily: "Poppins" string with no matching @font-face silently falls
+   back to the browser default. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource/playfair-display/400.css';
+@import '@fontsource/playfair-display/700.css';
+@import '@fontsource/roboto-mono/400.css';
+@import '@fontsource/roboto-mono/700.css';
+
+:root {
+    --font-profile-inter: 'Inter';
+    --font-profile-poppins: 'Poppins';
+    --font-profile-playfair: 'Playfair Display';
+    --font-profile-roboto-mono: 'Roboto Mono';
+}
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
 @custom-variant dark (&:is(.dark *));
@@ -154,5 +177,79 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+/* Home page hero "tap to connect" loop: card lifts away, taps down, ripple +
+   glow pulse out from the contact point, then the phone brightens as the
+   profile loads. */
+@keyframes float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-14px);
+    }
+}
+
+@keyframes tap-card {
+    0%,
+    14% {
+        transform: translate(-10px, -22px) rotate(-10deg);
+    }
+    32%,
+    58% {
+        transform: translate(0, 0) rotate(-1deg);
+    }
+    76%,
+    100% {
+        transform: translate(-10px, -22px) rotate(-10deg);
+    }
+}
+
+@keyframes tap-ripple {
+    0%,
+    30% {
+        transform: scale(0.4);
+        opacity: 0;
+    }
+    42% {
+        opacity: 0.7;
+    }
+    68%,
+    100% {
+        transform: scale(1.8);
+        opacity: 0;
+    }
+}
+
+@keyframes tap-glow {
+    0%,
+    28% {
+        opacity: 0;
+    }
+    38%,
+    56% {
+        opacity: 1;
+    }
+    72%,
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes phone-wake {
+    0%,
+    28% {
+        filter: brightness(0.82) saturate(0.85);
+    }
+    42%,
+    62% {
+        filter: brightness(1.08) saturate(1.1);
+    }
+    80%,
+    100% {
+        filter: brightness(0.82) saturate(0.85);
     }
 }
