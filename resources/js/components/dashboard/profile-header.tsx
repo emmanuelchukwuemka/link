@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { Copy, Check, ExternalLink, Plus, ShoppingBag, Paintbrush } from 'lucide-react';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 export function ProfileHeader({
     username,
@@ -28,11 +29,7 @@ export function ProfileHeader({
         <div className="bg-white rounded-3xl p-5 shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-black overflow-hidden flex items-center justify-center text-xl font-bold text-white shrink-0">
-                    {avatarUrl ? (
-                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                        (displayName || username).charAt(0).toUpperCase()
-                    )}
+                    <ImageWithFallback src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" fallback={(displayName || username).charAt(0).toUpperCase()} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="font-bold text-lg truncate">{displayName || `@${username}`}</p>

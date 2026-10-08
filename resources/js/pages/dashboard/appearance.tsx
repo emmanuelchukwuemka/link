@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { Crown, Wallet, Check, Loader2, AlertCircle, Link2 } from 'lucide-react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ImageUploader } from '@/components/image-uploader';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { backgroundStyle } from '@/lib/profile/background';
 import { buttonSizePadding, buttonSizeFontClass } from '@/lib/profile/buttonSize';
 import { SaveContactButton } from '@/components/profile-interactive';
@@ -166,11 +167,7 @@ function AppearanceInner() {
                     <h2 className="text-xl font-bold mb-6">Profile</h2>
                     <div className="flex gap-6 mb-6 items-center">
                         <div className="w-24 h-24 bg-black rounded-full overflow-hidden flex items-center justify-center text-3xl text-white">
-                            {profile.avatarUrl ? (
-                                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                profile.displayName?.charAt(0) || profile.username?.charAt(0) || 'U'
-                            )}
+                            <ImageWithFallback src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" fallback={profile.displayName?.charAt(0) || profile.username?.charAt(0) || 'U'} />
                         </div>
                         <div className="flex flex-col gap-2 items-start">
                             <ImageUploader

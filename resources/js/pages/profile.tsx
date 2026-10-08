@@ -16,6 +16,7 @@ import { profileFontFamily } from '@/lib/profile/profileFonts';
 import { getLinkIcon } from '@/lib/profile/linkIcons';
 import { getTemplate } from '@/lib/profile/templates';
 import { buttonSizePadding, buttonSizeFontClass } from '@/lib/profile/buttonSize';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 const SOCIAL_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     Instagram: InstagramIcon,
@@ -174,13 +175,16 @@ export default function Profile({
                 {/* Avatar */}
                 {user.show_avatar !== false && (
                     <div className={`w-24 h-24 overflow-hidden mb-4 bg-gray-200 shadow-xl ${tmpl.avatarShape} ${tmpl.avatarRing}`}>
-                        {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.name || user.username} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-500">
-                                {(user.name || user.username).charAt(0).toUpperCase()}
-                            </div>
-                        )}
+                        <ImageWithFallback
+                            src={user.avatar_url}
+                            alt={user.name || user.username}
+                            className="w-full h-full object-cover"
+                            fallback={
+                                <div className="w-full h-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-500">
+                                    {(user.name || user.username).charAt(0).toUpperCase()}
+                                </div>
+                            }
+                        />
                     </div>
                 )}
 
@@ -196,13 +200,16 @@ export default function Profile({
                 {/* Business panel (employee profiles) */}
                 {user.business && (
                     <div className={`w-full max-w-md mb-6 p-4 flex items-center gap-3 ${tmpl.card}`}>
-                        {user.business.logo_url ? (
-                            <img src={user.business.logo_url} alt={user.business.name} className="w-10 h-10 rounded-lg object-cover" />
-                        ) : (
-                            <div className="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center font-bold">
-                                {user.business.name.charAt(0)}
-                            </div>
-                        )}
+                        <ImageWithFallback
+                            src={user.business.logo_url}
+                            alt={user.business.name}
+                            className="w-10 h-10 rounded-lg object-cover"
+                            fallback={
+                                <div className="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center font-bold">
+                                    {user.business.name.charAt(0)}
+                                </div>
+                            }
+                        />
                         <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm truncate">{user.business.name}</p>
                             {user.business.description && <p className="text-xs opacity-70 truncate">{user.business.description}</p>}
@@ -296,11 +303,12 @@ export default function Profile({
                                         padding: buttonSizePadding(user.button_size),
                                     }}
                                 >
-                                    {link.thumbnail ? (
-                                        <img src={link.thumbnail} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                                    ) : (
-                                        <Icon size={18} className="shrink-0 opacity-70" />
-                                    )}
+                                    <ImageWithFallback
+                                        src={link.thumbnail}
+                                        alt=""
+                                        className="w-7 h-7 rounded-full object-cover shrink-0"
+                                        fallback={<Icon size={18} className="shrink-0 opacity-70" />}
+                                    />
                                     <span className="flex-1 text-center">
                                         <span className="block font-medium">{link.title || 'Untitled Link'}</span>
                                         {link.description && <span className="block text-xs opacity-70">{link.description}</span>}

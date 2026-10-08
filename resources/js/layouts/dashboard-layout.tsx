@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/notification-bell';
 import { SupportChatWidget } from '@/components/support-chat-widget';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { apiFetch } from '@/lib/api';
 import {
     LayoutDashboard,
@@ -217,11 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <div className="relative">
                                 <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-full bg-black overflow-hidden flex items-center justify-center text-sm font-bold text-white shrink-0">
-                                        {me?.avatar_url ? (
-                                            <img src={me.avatar_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            (me?.name || me?.username || 'U').charAt(0).toUpperCase()
-                                        )}
+                                        <ImageWithFallback src={me?.avatar_url} alt="" className="w-full h-full object-cover" fallback={(me?.name || me?.username || 'U').charAt(0).toUpperCase()} />
                                     </div>
                                     <div className="hidden sm:block text-left">
                                         <p className="text-sm font-semibold leading-tight text-black">{me?.name || me?.username}</p>

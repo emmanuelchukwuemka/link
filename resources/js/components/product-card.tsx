@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { ShieldCheck } from 'lucide-react';
 import { fallbackVisual, getCategoryVisual } from '@/lib/productVisual';
 import { WishlistButton, AddToCartButton } from './marketplace-interactive';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 export type GridProduct = {
     id: number;
@@ -63,13 +64,16 @@ export function ProductCard({ p, className = '', layout = 'grid' }: { p: GridPro
             <div className={`group bg-white rounded-lg border border-[#D4D0C9] shadow-xs hover:shadow-md transition-all flex flex-col p-3 ${className}`}>
                 <div className="relative aspect-square rounded-md overflow-hidden bg-[#E8E5E0] flex items-center justify-center mb-2.5 border border-[#D4D0C9]/50">
                     <Link href={`/marketplace/${p.slug}`} className="w-full h-full flex items-center justify-center">
-                        {'photo' in visual ? (
-                            <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                        ) : (
-                            <div className="w-16 h-16 rounded-full bg-white shadow-xs flex items-center justify-center text-[#181818]">
-                                <CategoryIcon size={28} className="text-[#181818]" />
-                            </div>
-                        )}
+                        <ImageWithFallback
+                            src={'photo' in visual ? visual.photo : null}
+                            alt={p.name}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            fallback={
+                                <div className="w-16 h-16 rounded-full bg-white shadow-xs flex items-center justify-center text-[#181818]">
+                                    <CategoryIcon size={28} className="text-[#181818]" />
+                                </div>
+                            }
+                        />
                     </Link>
 
                     {discount > 0 && <span className="absolute top-2 left-2 bg-[#181818] text-white text-[11px] font-extrabold px-1.5 py-0.5 rounded shadow-xs">-{discount}%</span>}
@@ -102,13 +106,16 @@ export function ProductCard({ p, className = '', layout = 'grid' }: { p: GridPro
             <div className={`group bg-white rounded-lg border border-[#D4D0C9] shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row p-3.5 sm:p-4 gap-4 ${className}`}>
                 <div className="relative w-full sm:w-44 aspect-square rounded-md overflow-hidden bg-[#E8E5E0] shrink-0 flex items-center justify-center border border-[#D4D0C9]">
                     <Link href={`/marketplace/${p.slug}`} className="w-full h-full flex items-center justify-center">
-                        {'photo' in visual ? (
-                            <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                        ) : (
-                            <div className="w-16 h-16 rounded-full bg-white shadow-xs flex items-center justify-center text-[#181818]">
-                                <CategoryIcon size={28} className="text-[#181818]" />
-                            </div>
-                        )}
+                        <ImageWithFallback
+                            src={'photo' in visual ? visual.photo : null}
+                            alt={p.name}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            fallback={
+                                <div className="w-16 h-16 rounded-full bg-white shadow-xs flex items-center justify-center text-[#181818]">
+                                    <CategoryIcon size={28} className="text-[#181818]" />
+                                </div>
+                            }
+                        />
                     </Link>
 
                     {discount > 0 && <span className="absolute top-2 left-2 bg-[#181818] text-white text-[11px] font-extrabold px-1.5 py-0.5 rounded shadow-xs">-{discount}%</span>}
@@ -158,13 +165,16 @@ export function ProductCard({ p, className = '', layout = 'grid' }: { p: GridPro
         <div className={`group bg-white rounded-lg border border-[#D4D0C9] shadow-xs hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden relative ${className}`}>
             <div className="relative aspect-square bg-[#E8E5E0] flex items-center justify-center overflow-hidden border-b border-[#D4D0C9]">
                 <Link href={`/marketplace/${p.slug}`} className="w-full h-full flex items-center justify-center">
-                    {'photo' in visual ? (
-                        <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white shadow-xs border border-[#D4D0C9] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                            <CategoryIcon size={32} className="text-[#181818]" />
-                        </div>
-                    )}
+                    <ImageWithFallback
+                        src={'photo' in visual ? visual.photo : null}
+                        alt={p.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        fallback={
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white shadow-xs border border-[#D4D0C9] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                                <CategoryIcon size={32} className="text-[#181818]" />
+                            </div>
+                        }
+                    />
                 </Link>
 
                 <div className="absolute top-2 left-2 flex flex-col gap-1 items-start pointer-events-none">

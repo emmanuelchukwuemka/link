@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ProfileHeader } from '@/components/dashboard/profile-header';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 type Me = {
     username: string;
@@ -266,7 +267,7 @@ function DashboardOverviewInner() {
                         <h2 className="font-bold mb-4">Profile Preview</h2>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-14 h-14 rounded-full bg-black overflow-hidden flex items-center justify-center text-lg font-bold text-white shrink-0">
-                                {me.avatar_url ? <img src={me.avatar_url} alt="" className="w-full h-full object-cover" /> : (me.name || me.username).charAt(0).toUpperCase()}
+                                <ImageWithFallback src={me.avatar_url} alt="" className="w-full h-full object-cover" fallback={(me.name || me.username).charAt(0).toUpperCase()} />
                             </div>
                             <div className="min-w-0">
                                 <p className="font-semibold truncate text-black">{me.name || me.username}</p>

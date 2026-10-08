@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/notification-bell';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { LayoutDashboard, Package, ClipboardList, CreditCard, Truck, Users, MessageSquareText, LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink, MessageCircle, Mail } from 'lucide-react';
 
 type AdminUser = {
@@ -209,7 +210,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <div className="relative">
                                 <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-full bg-black overflow-hidden flex items-center justify-center text-sm font-bold text-white shrink-0">
-                                        {me?.avatarUrl ? <img src={me.avatarUrl} alt="" className="w-full h-full object-cover" /> : (me?.displayName || me?.username || 'A').charAt(0).toUpperCase()}
+                                        <ImageWithFallback src={me?.avatarUrl} alt="" className="w-full h-full object-cover" fallback={(me?.displayName || me?.username || 'A').charAt(0).toUpperCase()} />
                                     </div>
                                     <div className="hidden sm:block text-left">
                                         <p className="text-sm font-semibold leading-tight text-black">{me?.displayName || me?.username || 'Admin'}</p>

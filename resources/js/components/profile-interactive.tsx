@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import { Download, Send, CheckCircle2, Image as ImageIcon, Share2, X as CloseIcon, Link2, Check, MessageSquare } from 'lucide-react';
 import { WhatsAppIcon, XIcon, FacebookIcon, LinkedInIcon } from '@/components/brand-icons';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 function track(username: string, type: string, meta?: Record<string, unknown>) {
     fetch('/api/analytics/track', {
@@ -331,11 +332,12 @@ function ShareModal({
 
                 <div className="bg-black rounded-2xl p-5 flex flex-col items-center text-center mb-5">
                     <div className="w-16 h-16 rounded-full bg-gray-700 overflow-hidden mb-3 flex items-center justify-center text-xl font-bold text-white">
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt={displayName || username} className="w-full h-full object-cover" />
-                        ) : (
-                            (displayName || username).charAt(0).toUpperCase()
-                        )}
+                        <ImageWithFallback
+                            src={avatarUrl}
+                            alt={displayName || username}
+                            className="w-full h-full object-cover"
+                            fallback={(displayName || username).charAt(0).toUpperCase()}
+                        />
                     </div>
                     <p className="font-bold text-white">{displayName || username}</p>
                     <p className="text-xs text-gray-400">

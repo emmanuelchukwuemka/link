@@ -82,6 +82,22 @@ return [
             ]) : [],
         ],
 
+        // Points at the pre-migration (Next.js/Prisma-style) schema so the one-time
+        // app:migrate-legacy-data command can read old rows. Table names never
+        // collide with the new Laravel schema (user vs users, order vs orders, etc.),
+        // so in production this can point at the SAME physical database as 'mysql'.
+        'legacy' => [
+            'driver' => 'mysql',
+            'host' => env('LEGACY_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('LEGACY_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('LEGACY_DB_DATABASE', 'tapconnect_prod_check'),
+            'username' => env('LEGACY_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('LEGACY_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

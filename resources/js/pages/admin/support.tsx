@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import { MessageCircle } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 type Conversation = {
     user: { id: number; username: string; displayName: string | null; avatarUrl: string | null; accountType: string };
@@ -45,7 +46,7 @@ function AdminSupportInner() {
                     {conversations.map((c) => (
                         <Link key={c.user.id} href={`/admin/support/${c.user.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                             <div className="w-11 h-11 rounded-full bg-black overflow-hidden flex items-center justify-center text-sm font-bold text-white shrink-0">
-                                {c.user.avatarUrl ? <img src={c.user.avatarUrl} alt="" className="w-full h-full object-cover" /> : (c.user.displayName || c.user.username).charAt(0).toUpperCase()}
+                                <ImageWithFallback src={c.user.avatarUrl} alt="" className="w-full h-full object-cover" fallback={(c.user.displayName || c.user.username).charAt(0).toUpperCase()} />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">

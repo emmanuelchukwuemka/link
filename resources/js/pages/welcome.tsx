@@ -5,6 +5,7 @@ import { Reveal } from '@/components/reveal';
 import { CartBadge } from '@/components/cart-badge';
 import { BuyNowButton, TestimonialCarousel, NewsletterForm, ContactForm } from '@/components/landing-interactive';
 import { fallbackVisual } from '@/lib/productVisual';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 const STEPS = [
     { n: '01', title: 'Get Your Card', body: 'Order a TapConnect card or wristband from our shop.', icon: ShoppingBag, image: '/step-1-card.jpg' },
@@ -237,18 +238,22 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                             {products.map((p, i) => {
                                 const savings = p.priceSale ? p.priceRegular - p.priceSale : 0;
                                 const visual = p.images[0] ? { photo: p.images[0] } : fallbackVisual(p.category);
+                                const VisualIcon = 'icon' in visual ? visual.icon : null;
                                 return (
                                     <Reveal key={p.id} delay={i * 80}>
                                         <div className="group bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                                             <div className="flex-1">
                                                 <Link href={`/marketplace/${p.slug}`} className="relative aspect-square bg-gradient-to-br from-[#F0F0EE] to-[#E5E5E1] rounded-xl sm:rounded-2xl mb-3 sm:mb-4 flex items-center justify-center overflow-hidden">
-                                                    {'photo' in visual ? (
-                                                        <img src={visual.photo} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                                    ) : (
-                                                        <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                                                            <visual.icon size={26} className="text-black/70" />
-                                                        </div>
-                                                    )}
+                                                    <ImageWithFallback
+                                                        src={'photo' in visual ? visual.photo : null}
+                                                        alt={p.name}
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                        fallback={
+                                                            <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                                                                {VisualIcon && <VisualIcon size={26} className="text-black/70" />}
+                                                            </div>
+                                                        }
+                                                    />
                                                 </Link>
                                                 <Link href={`/marketplace/${p.slug}`} className="font-bold text-sm sm:text-base hover:underline leading-snug">
                                                     {p.name}

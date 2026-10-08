@@ -5,6 +5,7 @@ import { Trash2, GripVertical, Link as LinkIcon, Share2, Crown, Plus, X, Chevron
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { getLinkIcon } from '@/lib/profile/linkIcons';
 import { ImageUploader } from '@/components/image-uploader';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { ProfileHeader } from '@/components/dashboard/profile-header';
 import { StoreProductsPanel } from '@/components/dashboard/store-products-panel';
 import { LinkEditorModal, type LinkType } from '@/components/dashboard/link-editor-modal';
@@ -47,7 +48,7 @@ function ThumbnailPopup({ link, onClose, onSaved }: { link: LinkType; onClose: (
                     </button>
                 </div>
                 <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center overflow-hidden mx-auto mb-4">
-                    {link.thumbnail ? <img src={link.thumbnail} alt="" className="w-full h-full object-cover" /> : <LinkIcon size={24} className="text-gray-400" />}
+                    <ImageWithFallback src={link.thumbnail} alt="" className="w-full h-full object-cover" fallback={<LinkIcon size={24} className="text-gray-400" />} />
                 </div>
                 <div className="flex flex-col items-center gap-2">
                     <ImageUploader
@@ -104,7 +105,7 @@ function LinkRow({
                 className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 hover:ring-2 hover:ring-black/20 transition-all"
                 title="Change thumbnail"
             >
-                {link.thumbnail ? <img src={link.thumbnail} alt="" className="w-full h-full object-cover" /> : <Icon size={20} className="text-gray-400" />}
+                <ImageWithFallback src={link.thumbnail} alt="" className="w-full h-full object-cover" fallback={<Icon size={20} className="text-gray-400" />} />
             </button>
 
             <button onClick={() => onOpenEdit(link)} className="flex-1 min-w-0 text-left">
@@ -371,11 +372,7 @@ function DashboardLinksInner() {
                 <div className="w-32 h-6 bg-black absolute top-0 rounded-b-xl z-10 left-1/2 -translate-x-1/2"></div>
                 <div className="w-full py-12 px-4 flex flex-col items-center gap-4 bg-[#F3F3F1] min-h-full">
                     <div className="w-24 h-24 bg-gray-300 rounded-full mb-2 overflow-hidden flex items-center justify-center text-2xl font-bold text-gray-500">
-                        {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                            (profile?.name || profile?.username || 'U').charAt(0).toUpperCase()
-                        )}
+                        <ImageWithFallback src={profile?.avatar_url} alt="" className="w-full h-full object-cover" fallback={(profile?.name || profile?.username || 'U').charAt(0).toUpperCase()} />
                     </div>
                     <h2 className="font-bold text-xl mb-4">{profile ? `@${profile.username}` : '@username'}</h2>
 
@@ -391,11 +388,7 @@ function DashboardLinksInner() {
                                     rel="noopener noreferrer"
                                     className="w-full bg-white text-black font-semibold p-4 text-center rounded-full shadow-sm hover:scale-[1.02] transition-transform relative flex items-center justify-center gap-2"
                                 >
-                                    {link.thumbnail ? (
-                                        <img src={link.thumbnail} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                                    ) : (
-                                        <PreviewIcon size={16} className="text-gray-500" />
-                                    )}
+                                    <ImageWithFallback src={link.thumbnail} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" fallback={<PreviewIcon size={16} className="text-gray-500" />} />
                                     {link.title || 'Untitled'}
                                 </a>
                             );

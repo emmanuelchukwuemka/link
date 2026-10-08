@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Building2, Plus, Trash2, CreditCard, Users2, Eye, Smartphone, QrCode, MessageSquareText, Phone, Mail, Crown } from 'lucide-react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ImageUploader } from '@/components/image-uploader';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { apiFetch } from '@/lib/api';
 
 type BusinessPlanName = 'free' | 'tier10' | 'tier25' | 'tier50' | 'tier100' | 'enterprise';
@@ -181,11 +182,7 @@ function BusinessInner() {
                 <h2 className="font-bold text-lg">Company Profile</h2>
                 <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl bg-black overflow-hidden flex items-center justify-center font-bold text-white shrink-0">
-                        {business.logo_url ? (
-                            <img src={business.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                        ) : (
-                            business.name?.charAt(0) || 'B'
-                        )}
+                        <ImageWithFallback src={business.logo_url} alt="Logo" className="w-full h-full object-cover" fallback={business.name?.charAt(0) || 'B'} />
                     </div>
                     <ImageUploader
                         label="Upload logo"

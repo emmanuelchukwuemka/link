@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { ArrowLeft, Send } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import AdminLayout from '@/layouts/admin-layout';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 
 type Message = { id: number; sender: string; body: string; created_at: string };
 type SupportUser = { id: number; username: string; displayName: string | null; avatarUrl: string | null; accountType: string };
@@ -64,7 +65,7 @@ function AdminSupportThreadInner({ userId }: { userId: string }) {
 
             <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-black overflow-hidden flex items-center justify-center text-sm font-bold text-white shrink-0">
-                    {user.avatarUrl ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" /> : (user.displayName || user.username).charAt(0).toUpperCase()}
+                    <ImageWithFallback src={user.avatarUrl} alt="" className="w-full h-full object-cover" fallback={(user.displayName || user.username).charAt(0).toUpperCase()} />
                 </div>
                 <div>
                     <p className="font-bold text-black">{user.displayName || user.username}</p>

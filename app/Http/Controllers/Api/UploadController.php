@@ -34,14 +34,21 @@ class UploadController extends Controller
         if (! $file) {
             return response()->json(['error' => 'No file provided'], 400);
         }
-        if (! in_array($file->getMimeType(), self::ALLOWED_MIMES, true)) {
-            return response()->json(['error' => 'Unsupported file type. Use JPG, PNG, WEBP or GIF.'], 400);
-        }
         if ($file->getSize() > self::MAX_SIZE_BYTES) {
             return response()->json(['error' => 'File is too large. Max size is 5MB.'], 400);
         }
 
-        $ext = self::EXT_BY_MIME[$file->getMimeType()];
+        // getimagesize() reads the real image header bytes directly — unlike
+        // getMimeType(), it doesn't depend on the fileinfo PHP extension,
+        // which this host doesn't have enabled (and can't enable without
+        // WHM/root access). It's also stronger validation: a renamed .php
+        // file with a .jpg extension won't pass this check either way.
+        $imageInfo = @getimagesize($file->getRealPath());
+        if ($imageInfo === false || ! in_array($imageInfo['mime'], self::ALLOWED_MIMES, true)) {
+            return response()->json(['error' => 'Unsupported file type. Use JPG, PNG, WEBP or GIF.'], 400);
+        }
+
+        $ext = self::EXT_BY_MIME[$imageInfo['mime']];
         $filename = now()->getTimestampMs().'-'.substr(bin2hex(random_bytes(4)), 0, 6).'.'.$ext;
 
         $file->move(public_path("uploads/{$scope}"), $filename);

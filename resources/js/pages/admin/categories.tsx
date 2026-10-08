@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { Plus, Trash2, Pencil, Check, X, ChevronDown, ChevronRight, GripVertical, FolderTree, Layers, Package, FolderPlus } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 import { fallbackVisual } from '@/lib/productVisual';
+import { ImageWithFallback } from '@/components/image-with-fallback';
 import { apiFetch } from '@/lib/api';
 import type { CategoryNode } from '@/lib/categoryTree';
 
@@ -27,9 +28,10 @@ function reorderTree(nodes: CategoryNode[], parentId: number | null, draggedId: 
 
 function CategoryThumb({ name }: { name: string }) {
     const visual = fallbackVisual(name);
+    const Icon = 'icon' in visual ? visual.icon : null;
     return (
         <div className="w-11 h-11 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
-            {'photo' in visual ? <img src={visual.photo} alt="" className="w-full h-full object-cover" /> : <visual.icon size={18} className="text-gray-500" />}
+            <ImageWithFallback src={'photo' in visual ? visual.photo : null} alt="" className="w-full h-full object-cover" fallback={Icon && <Icon size={18} className="text-gray-500" />} />
         </div>
     );
 }
