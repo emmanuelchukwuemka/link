@@ -51,14 +51,23 @@ class LinkController extends Controller
             return response()->json(['error' => 'Not found'], 404);
         }
 
-        $link->update([
-            'title' => $request->input('title'),
-            'url' => $request->input('url'),
-            'thumbnail' => $request->input('thumbnail'),
-            'is_active' => $request->input('isActive'),
-            'icon_name' => $request->input('iconName'),
-            'description' => $request->input('description'),
-        ]);
+        $fieldMap = [
+            'title' => 'title',
+            'url' => 'url',
+            'thumbnail' => 'thumbnail',
+            'isActive' => 'is_active',
+            'iconName' => 'icon_name',
+            'description' => 'description',
+        ];
+
+        $changes = [];
+        foreach ($fieldMap as $requestKey => $column) {
+            if ($request->has($requestKey)) {
+                $changes[$column] = $request->input($requestKey);
+            }
+        }
+
+        $link->update($changes);
 
         return response()->json(['link' => $link]);
     }

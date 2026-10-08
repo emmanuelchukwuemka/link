@@ -81,7 +81,11 @@ class MigrateLegacyData extends Command
                 'name' => $r->displayName ?: $r->username,
                 'username' => $r->username,
                 'email' => $r->email,
-                'password' => $r->password,
+                // $2b$ (old Node bcrypt lib) and $2y$ (PHP) are the same bcrypt
+                // algorithm with different identifier conventions - Laravel's
+                // BcryptHasher strictly rejects anything not $2y$, so this has
+                // to be relabeled or every migrated password becomes unusable.
+                'password' => preg_replace('/^\$2[ab]\$/', '\$2y\$', $r->password),
                 'account_type' => $r->accountType,
                 'is_active' => (bool) $r->isActive,
                 'job_title' => $r->jobTitle,
