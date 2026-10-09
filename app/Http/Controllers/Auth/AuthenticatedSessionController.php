@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -53,7 +54,7 @@ class AuthenticatedSessionController extends Controller
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
-                'username' => $user->username,
+                'username' => Profile::active($user)->username,
                 'name' => $user->name,
                 'accountType' => $user->account_type,
             ],

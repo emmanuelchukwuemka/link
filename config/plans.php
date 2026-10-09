@@ -12,6 +12,10 @@ return [
 
     'free_link_limit' => 5,
 
+    // How many public profiles one account can own.
+    'free_profile_limit' => 1,
+    'pro_profile_limit' => 5,
+
     'free_template' => 'minimal',
 
     // More than one free option — Playfair Display stays Pro-exclusive as the

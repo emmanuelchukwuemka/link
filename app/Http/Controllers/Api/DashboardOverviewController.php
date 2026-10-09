@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Link;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Profile;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,26 +44,27 @@ class DashboardOverviewController extends Controller
 
     public function __invoke(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $profileId = Profile::active($user)->id;
 
         $now = Carbon::now();
         $sevenDaysAgo = $now->copy()->subDays(7);
         $fourteenDaysAgo = $now->copy()->subDays(14);
 
-        $currentCounts = AnalyticsEvent::where('user_id', $userId)
+        $currentCounts = AnalyticsEvent::where('profile_id', $profileId)
             ->where('created_at', '>=', $sevenDaysAgo)
             ->selectRaw('type, COUNT(*) as c')
             ->groupBy('type')
             ->pluck('c', 'type');
 
-        $previousCounts = AnalyticsEvent::where('user_id', $userId)
+        $previousCounts = AnalyticsEvent::where('profile_id', $profileId)
             ->whereBetween('created_at', [$fourteenDaysAgo, $sevenDaysAgo])
             ->selectRaw('type, COUNT(*) as c')
             ->groupBy('type')
             ->pluck('c', 'type');
 
-        $currentLeads = Lead::where('owner_id', $userId)->where('created_at', '>=', $sevenDaysAgo)->count();
-        $previousLeads = Lead::where('owner_id', $userId)->whereBetween('created_at', [$fourteenDaysAgo, $sevenDaysAgo])->count();
+        $currentLeads = Lead::where('profile_id', $profileId)->where('created_at', '>=', $sevenDaysAgo)->count();
+        $previousLeads = Lead::where('profile_id', $profileId)->whereBetween('created_at', [$fourteenDaysAgo, $sevenDaysAgo])->count();
 
         $currClicks = collect(self::CLICK_TYPES)->sum(fn ($t) => (int) ($currentCounts[$t] ?? 0));
         $prevClicks = collect(self::CLICK_TYPES)->sum(fn ($t) => (int) ($previousCounts[$t] ?? 0));
@@ -75,8 +77,8 @@ class DashboardOverviewController extends Controller
         ];
 
         // 7-day daily series for each headline stat.
-        $sevenDayEvents = AnalyticsEvent::where('user_id', $userId)->where('created_at', '>=', $sevenDaysAgo)->get(['type', 'created_at']);
-        $sevenDayLeads = Lead::where('owner_id', $userId)->where('created_at', '>=', $sevenDaysAgo)->get(['created_at']);
+        $sevenDayEvents = AnalyticsEvent::where('profile_id', $profileId)->where('created_at', '>=', $sevenDaysAgo)->get(['type', 'created_at']);
+        $sevenDayLeads = Lead::where('profile_id', $profileId)->where('created_at', '>=', $sevenDaysAgo)->get(['created_at']);
 
         $days = [];
         for ($i = 6; $i >= 0; $i--) {
@@ -116,7 +118,7 @@ class DashboardOverviewController extends Controller
         ];
 
         // Top links: blend of custom Link clicks and named contact-action types.
-        $links = Link::where('user_id', $userId)->orderByDesc('clicks')->limit(5)->get();
+        $links = Link::where('profile_id', $profileId)->orderByDesc('clicks')->limit(5)->get();
         $topLinks = collect([
             ...$links->filter(fn ($l) => $l->clicks > 0)->map(fn ($l) => ['label' => $l->title ?: 'Untitled Link', 'value' => $l->clicks])->values()->all(),
             ['label' => 'WhatsApp', 'value' => (int) ($currentCounts['WHATSAPP_CLICK'] ?? 0)],
@@ -130,8 +132,8 @@ class DashboardOverviewController extends Controller
             ->take(5)
             ->values();
 
-        $recentEvents = AnalyticsEvent::where('user_id', $userId)->orderByDesc('created_at')->limit(8)->get();
-        $recentLeads = Lead::where('owner_id', $userId)->orderByDesc('created_at')->limit(3)->get();
+        $recentEvents = AnalyticsEvent::where('profile_id', $profileId)->orderByDesc('created_at')->limit(8)->get();
+        $recentLeads = Lead::where('profile_id', $profileId)->orderByDesc('created_at')->limit(3)->get();
 
         $activity = collect([
             ...$recentEvents->map(fn ($e) => [
@@ -145,7 +147,7 @@ class DashboardOverviewController extends Controller
             ->take(6)
             ->values();
 
-        $recentOrders = Order::where('user_id', $userId)->orderByDesc('created_at')->limit(3)->get();
+        $recentOrders = Order::where('user_id', $user->id)->orderByDesc('created_at')->limit(3)->get();
         $orderItems = $recentOrders->isNotEmpty()
             ? OrderItem::with('product')->whereIn('order_id', $recentOrders->pluck('id'))->get()
             : collect();
@@ -162,7 +164,7 @@ class DashboardOverviewController extends Controller
                 'createdAt' => $o->created_at,
                 'items' => $orderItems->where('order_id', $o->id)->map(fn ($i) => ['name' => $i->product?->name, 'quantity' => $i->quantity])->values(),
             ]),
-            'cardCount' => Card::where('user_id', $userId)->count(),
+            'cardCount' => Card::where('profile_id', $profileId)->count(),
         ]);
     }
 }

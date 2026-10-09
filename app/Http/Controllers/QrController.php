@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AnalyticsEvent;
-use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Http\RedirectResponse;
 
 class QrController extends Controller
@@ -15,13 +15,13 @@ class QrController extends Controller
      */
     public function __invoke(string $username): RedirectResponse
     {
-        $user = User::where('username', $username)->first();
+        $profile = Profile::where('username', $username)->first();
 
-        if (! $user) {
+        if (! $profile) {
             return redirect()->route('home');
         }
 
-        AnalyticsEvent::create(['user_id' => $user->id, 'type' => 'QR_SCAN']);
+        AnalyticsEvent::create(['user_id' => $profile->user_id, 'profile_id' => $profile->id, 'type' => 'QR_SCAN']);
 
         return redirect()->route('profile.show', ['user' => $username, 'src' => 'qr']);
     }

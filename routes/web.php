@@ -131,6 +131,9 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('api/social-links/{socialLink}', [SocialLinkController::class, 'destroy']);
 
     Route::put('api/profile', [ProfileController::class, 'update']);
+    Route::get('api/profiles', [ProfileController::class, 'mine']);
+    Route::post('api/profiles', [ProfileController::class, 'store']);
+    Route::post('api/profiles/switch', [ProfileController::class, 'switch']);
 
     Route::get('api/services', [ServiceController::class, 'index']);
     Route::post('api/services', [ServiceController::class, 'store']);

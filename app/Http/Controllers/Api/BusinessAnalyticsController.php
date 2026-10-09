@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AnalyticsEvent;
 use App\Models\Business;
 use App\Models\Lead;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,15 +37,18 @@ class BusinessAnalyticsController extends Controller
             ->groupBy('owner_id')
             ->pluck('c', 'owner_id');
 
-        $perEmployee = $employees->map(function (User $emp) use ($events, $leadCounts) {
+        $profilesByUser = Profile::whereIn('user_id', $employeeIds)->oldest()->get()->unique('user_id')->keyBy('user_id');
+
+        $perEmployee = $employees->map(function (User $emp) use ($events, $leadCounts, $profilesByUser) {
             $empEvents = $events->where('user_id', $emp->id);
             $get = fn (string $type) => (int) ($empEvents->firstWhere('type', $type)->c ?? 0);
+            $profile = $profilesByUser->get($emp->id);
 
             return [
                 'id' => $emp->id,
-                'username' => $emp->username,
-                'displayName' => $emp->name,
-                'jobTitle' => $emp->job_title,
+                'username' => $profile?->username,
+                'displayName' => $profile?->name ?? $emp->name,
+                'jobTitle' => $profile?->job_title,
                 'views' => $get('PROFILE_VIEW'),
                 'nfcTaps' => $get('NFC_TAP'),
                 'qrScans' => $get('QR_SCAN'),

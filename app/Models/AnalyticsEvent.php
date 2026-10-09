@@ -9,10 +9,15 @@ class AnalyticsEvent extends Model
 {
     const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'type', 'meta'];
+    protected $fillable = ['user_id', 'profile_id', 'type', 'meta'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 }

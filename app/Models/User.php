@@ -22,39 +22,11 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'username',
         'email',
         'email_verified_at',
         'password',
         'account_type',
         'is_active',
-        'job_title',
-        'department',
-        'bio',
-        'about_text',
-        'avatar_url',
-        'show_avatar',
-        'social_position',
-        'phone',
-        'whatsapp',
-        'website',
-        'address',
-        'business_hours',
-        'lead_form_enabled',
-        'theme',
-        'template',
-        'bg_type',
-        'bg_color',
-        'bg_gradient',
-        'bg_image',
-        'button_style',
-        'button_size',
-        'button_color',
-        'button_text_color',
-        'font_family',
-        'text_color',
-        'plan',
-        'plan_expires_at',
         'business_id',
     ];
 
@@ -79,18 +51,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
-            'show_avatar' => 'boolean',
-            'lead_form_enabled' => 'boolean',
-            'plan_expires_at' => 'datetime',
         ];
-    }
-
-    /**
-     * Public profile URLs (e.g. /{username}) resolve on username, not the numeric id.
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'username';
     }
 
     public function business(): BelongsTo
@@ -103,59 +64,19 @@ class User extends Authenticatable
         return $this->hasOne(Business::class, 'owner_id');
     }
 
-    public function cards(): HasMany
+    /**
+     * An account can own several public profiles (each with its own username,
+     * appearance, links, and plan) — see Profile for everything that used to
+     * live directly on users before multi-profile support was added.
+     */
+    public function profiles(): HasMany
     {
-        return $this->hasMany(Card::class);
-    }
-
-    public function links(): HasMany
-    {
-        return $this->hasMany(Link::class);
-    }
-
-    public function socialLinks(): HasMany
-    {
-        return $this->hasMany(SocialLink::class);
-    }
-
-    public function services(): HasMany
-    {
-        return $this->hasMany(Service::class);
-    }
-
-    public function portfolioItems(): HasMany
-    {
-        return $this->hasMany(PortfolioItem::class);
-    }
-
-    public function testimonials(): HasMany
-    {
-        return $this->hasMany(Testimonial::class);
-    }
-
-    public function storeProducts(): HasMany
-    {
-        return $this->hasMany(StoreProduct::class);
-    }
-
-    public function categories(): HasMany
-    {
-        return $this->hasMany(Category::class);
+        return $this->hasMany(Profile::class);
     }
 
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
-    }
-
-    public function leads(): HasMany
-    {
-        return $this->hasMany(Lead::class, 'owner_id');
-    }
-
-    public function analyticsEvents(): HasMany
-    {
-        return $this->hasMany(AnalyticsEvent::class);
     }
 
     public function notifications(): HasMany
@@ -166,20 +87,5 @@ class User extends Authenticatable
     public function supportMessages(): HasMany
     {
         return $this->hasMany(SupportMessage::class);
-    }
-
-    public function subscriptionPayments(): HasMany
-    {
-        return $this->hasMany(SubscriptionPayment::class);
-    }
-
-    /**
-     * Mirrors the old Next.js app's isProActive(plan, planExpiresAt) — Pro features
-     * gate on live expiry, not a static flag, so this must be checked dynamically.
-     */
-    public function isProActive(): bool
-    {
-        return $this->plan === 'pro'
-            && (! $this->plan_expires_at || $this->plan_expires_at->isFuture());
     }
 }

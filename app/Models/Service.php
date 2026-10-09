@@ -9,10 +9,15 @@ class Service extends Model
 {
     const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'name', 'description', 'price', 'cta_type', 'position'];
+    protected $fillable = ['user_id', 'profile_id', 'name', 'description', 'price', 'cta_type', 'position'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 }

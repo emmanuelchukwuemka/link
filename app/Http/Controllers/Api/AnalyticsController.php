@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AnalyticsEvent;
 use App\Models\Lead;
-use App\Models\User;
+use App\Models\Profile;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,13 +29,14 @@ class AnalyticsController extends Controller
             return response()->json(['error' => 'Invalid event'], 400);
         }
 
-        $user = User::where('username', $username)->first();
-        if (! $user) {
+        $profile = Profile::where('username', $username)->first();
+        if (! $profile) {
             return response()->json(['error' => 'Profile not found'], 404);
         }
 
         AnalyticsEvent::create([
-            'user_id' => $user->id,
+            'user_id' => $profile->user_id,
+            'profile_id' => $profile->id,
             'type' => $type,
             'meta' => $meta ? substr(json_encode($meta), 0, 2000) : null,
         ]);
@@ -55,17 +56,17 @@ class AnalyticsController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $profileId = Profile::active($request->user())->id;
         $range = $request->query('range');
         $since = $this->rangeStart($range);
 
-        $query = AnalyticsEvent::where('user_id', $userId);
+        $query = AnalyticsEvent::where('profile_id', $profileId);
         if ($since) {
             $query->where('created_at', '>=', $since);
         }
         $counts = $query->selectRaw('type, COUNT(*) as c')->groupBy('type')->pluck('c', 'type');
 
-        $leadQuery = Lead::where('owner_id', $userId);
+        $leadQuery = Lead::where('profile_id', $profileId);
         if ($since) {
             $leadQuery->where('created_at', '>=', $since);
         }

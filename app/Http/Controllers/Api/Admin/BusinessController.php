@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,18 +53,25 @@ class BusinessController extends Controller
             return response()->json(['error' => 'Business name, owner email, username and password are required'], 400);
         }
 
-        if (User::where('email', $email)->orWhere('username', $username)->exists()) {
+        if (User::where('email', $email)->exists() || Profile::where('username', $username)->exists()) {
             return response()->json(['error' => 'A user with this email or username already exists'], 409);
         }
 
         try {
             $business = DB::transaction(function () use ($businessName, $email, $username, $password, $displayName) {
+                $name = $displayName ?: $username;
+
                 $owner = User::create([
                     'email' => $email,
-                    'username' => $username,
                     'password' => $password,
-                    'name' => $displayName ?: $username,
+                    'name' => $name,
                     'account_type' => 'business_admin',
+                ]);
+
+                Profile::create([
+                    'user_id' => $owner->id,
+                    'username' => $username,
+                    'name' => $name,
                 ]);
 
                 return Business::create([

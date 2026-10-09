@@ -14,6 +14,7 @@ class Card extends Model
         'code',
         'status',
         'user_id',
+        'profile_id',
         'business_id',
         'product',
         'color',
@@ -37,6 +38,11 @@ class Card extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 
     public function business(): BelongsTo

@@ -9,10 +9,15 @@ class Testimonial extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['user_id', 'author_name', 'content', 'rating', 'position'];
+    protected $fillable = ['user_id', 'profile_id', 'author_name', 'content', 'rating', 'position'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 }

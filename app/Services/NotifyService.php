@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Notification;
-use App\Models\User;
+use App\Models\Profile;
 use Carbon\Carbon;
 
 class NotifyService
@@ -31,19 +31,20 @@ class NotifyService
      * De-duped by only creating one of each type while the previous one is
      * still unread.
      */
-    public function checkSubscriptionExpiry(User $user): void
+    public function checkSubscriptionExpiry(Profile $profile): void
     {
-        if ($user->plan !== 'pro' || ! $user->plan_expires_at) {
+        if ($profile->plan !== 'pro' || ! $profile->plan_expires_at) {
             return;
         }
 
-        $daysLeft = Carbon::now()->diffInDays($user->plan_expires_at, false);
+        $daysLeft = Carbon::now()->diffInDays($profile->plan_expires_at, false);
+        $userId = $profile->user_id;
 
         if ($daysLeft < 0) {
-            $exists = Notification::where('user_id', $user->id)->where('type', 'SUBSCRIPTION_EXPIRED')->where('read', false)->exists();
+            $exists = Notification::where('user_id', $userId)->where('type', 'SUBSCRIPTION_EXPIRED')->where('read', false)->exists();
             if (! $exists) {
                 $this->notify(
-                    $user->id,
+                    $userId,
                     'SUBSCRIPTION_EXPIRED',
                     'Your Pro subscription has expired',
                     'Renew to restore premium features. Your basic profile, NFC and QR code stay active.',
@@ -51,13 +52,13 @@ class NotifyService
                 );
             }
         } elseif ($daysLeft <= 7) {
-            $exists = Notification::where('user_id', $user->id)->where('type', 'SUBSCRIPTION_EXPIRING')->where('read', false)->exists();
+            $exists = Notification::where('user_id', $userId)->where('type', 'SUBSCRIPTION_EXPIRING')->where('read', false)->exists();
             if (! $exists) {
                 $this->notify(
-                    $user->id,
+                    $userId,
                     'SUBSCRIPTION_EXPIRING',
                     'Your Pro subscription is expiring soon',
-                    'Renews/expires on '.$user->plan_expires_at->format('M j, Y').'.',
+                    'Renews/expires on '.$profile->plan_expires_at->format('M j, Y').'.',
                     '/dashboard/subscription',
                 );
             }

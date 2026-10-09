@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/notification-bell';
+import { ProfileSwitcher } from '@/components/profile-switcher';
 import { SupportChatWidget } from '@/components/support-chat-widget';
 import { ImageWithFallback } from '@/components/image-with-fallback';
 import { apiFetch } from '@/lib/api';
@@ -214,6 +215,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
 
                         <div className="flex items-center gap-3 ml-auto">
+                            <ProfileSwitcher />
                             <NotificationBell />
                             <div className="relative">
                                 <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2">

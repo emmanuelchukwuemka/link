@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Profile;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class StoreCategoryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $categories = Category::where('scope', 'store')
-            ->where('user_id', $request->user()->id)
+            ->where('profile_id', Profile::active($request->user())->id)
             ->orderBy('position')
             ->get();
 
@@ -27,14 +28,15 @@ class StoreCategoryController extends Controller
             return response()->json(['error' => 'Category name is required'], 400);
         }
 
-        $user = $request->user();
-        $lastPosition = Category::where('scope', 'store')->where('user_id', $user->id)->max('position');
+        $profile = Profile::active($request->user());
+        $lastPosition = Category::where('scope', 'store')->where('profile_id', $profile->id)->max('position');
 
         try {
             $category = Category::create([
                 'name' => $name,
                 'scope' => 'store',
-                'user_id' => $user->id,
+                'user_id' => $profile->user_id,
+                'profile_id' => $profile->id,
                 'position' => $lastPosition === null ? 0 : $lastPosition + 1,
             ]);
         } catch (QueryException $e) {
@@ -49,7 +51,7 @@ class StoreCategoryController extends Controller
 
     public function destroy(Request $request, Category $category): JsonResponse
     {
-        if ($category->scope !== 'store' || $category->user_id !== $request->user()->id) {
+        if ($category->scope !== 'store' || $category->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Category not found'], 404);
         }
 

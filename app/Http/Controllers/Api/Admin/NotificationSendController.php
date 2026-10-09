@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Models\User;
 use App\Services\NotifyService;
 use Illuminate\Http\JsonResponse;
@@ -35,12 +36,12 @@ class NotificationSendController extends Controller
             return response()->json(['error' => 'A username or broadcast flag is required'], 400);
         }
 
-        $user = User::where('username', $username)->first();
-        if (! $user) {
+        $profile = Profile::where('username', $username)->first();
+        if (! $profile) {
             return response()->json(['error' => "No user found with username \"{$username}\""], 404);
         }
 
-        $notify->notify($user->id, 'ADMIN_MESSAGE', $title, $message, $link);
+        $notify->notify($profile->user_id, 'ADMIN_MESSAGE', $title, $message, $link);
 
         return response()->json(['sent' => 1]);
     }

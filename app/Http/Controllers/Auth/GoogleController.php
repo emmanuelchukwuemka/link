@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Models\User;
 use App\Services\UsernameGenerator;
 use Illuminate\Http\Request;
@@ -49,18 +50,24 @@ class GoogleController extends Controller
 
         if (! $user) {
             $username = UsernameGenerator::fromEmail($googleUser->getEmail());
+            $name = $googleUser->getName() ?: $username;
 
             $user = User::create([
                 'email' => $googleUser->getEmail(),
-                'username' => $username,
                 // Google already verified this email; no password is ever
                 // collected for this flow, so a random, never-surfaced hash
                 // stands in (matches the OTP signup pattern).
                 'password' => Hash::make(Str::random(32)),
-                'name' => $googleUser->getName() ?: $username,
-                'avatar_url' => $googleUser->getAvatar(),
+                'name' => $name,
                 'account_type' => 'individual',
                 'email_verified_at' => now(),
+            ]);
+
+            Profile::create([
+                'user_id' => $user->id,
+                'username' => $username,
+                'name' => $name,
+                'avatar_url' => $googleUser->getAvatar(),
             ]);
         }
 

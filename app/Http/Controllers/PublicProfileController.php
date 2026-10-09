@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AnalyticsEvent;
-use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,36 +13,36 @@ class PublicProfileController extends Controller
 {
     public function show(Request $request, string $user): Response
     {
-        $userRow = User::where('username', $user)->first();
+        $profile = Profile::where('username', $user)->first();
 
-        if (! $userRow) {
+        if (! $profile) {
             throw new NotFoundHttpException;
         }
 
-        $userRow->load([
+        $profile->load([
             'links' => fn ($q) => $q->where('is_active', true)->orderBy('position'),
             'socialLinks' => fn ($q) => $q->orderBy('position'),
             'services' => fn ($q) => $q->orderBy('position'),
             'portfolioItems' => fn ($q) => $q->orderBy('position'),
             'testimonials' => fn ($q) => $q->orderBy('position'),
             'storeProducts' => fn ($q) => $q->where('availability', '!=', 'hidden')->orderBy('position'),
-            'business',
+            'user.business',
         ]);
 
-        AnalyticsEvent::create(['user_id' => $userRow->id, 'type' => 'PROFILE_VIEW']);
+        AnalyticsEvent::create(['user_id' => $profile->user_id, 'profile_id' => $profile->id, 'type' => 'PROFILE_VIEW']);
 
-        $organization = $userRow->business?->name;
-        $displayTitle = $userRow->job_title && $organization
-            ? "{$userRow->job_title} at {$organization}"
-            : ($userRow->job_title ?: $organization);
+        $organization = $profile->user->business?->name;
+        $displayTitle = $profile->job_title && $organization
+            ? "{$profile->job_title} at {$organization}"
+            : ($profile->job_title ?: $organization);
 
-        $portfolioItems = $userRow->portfolioItems;
+        $portfolioItems = $profile->portfolioItems;
 
         return Inertia::render('profile', [
-            'user' => $userRow->makeHidden(['password', 'remember_token']),
+            'user' => array_merge($profile->toArray(), ['business' => $profile->user->business]),
             'organization' => $organization,
             'displayTitle' => $displayTitle,
-            'isPro' => $userRow->isProActive(),
+            'isPro' => $profile->isProActive(),
             'portfolioProjects' => $portfolioItems->where('type', '!=', 'gallery')->values(),
             'galleryImages' => $portfolioItems->where('type', 'gallery')->values(),
             'src' => $request->query('src'),

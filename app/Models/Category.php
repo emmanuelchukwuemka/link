@@ -10,11 +10,16 @@ class Category extends Model
 {
     const UPDATED_AT = null;
 
-    protected $fillable = ['name', 'scope', 'user_id', 'parent_id', 'position'];
+    protected $fillable = ['name', 'scope', 'user_id', 'profile_id', 'parent_id', 'position'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 
     public function parent(): BelongsTo

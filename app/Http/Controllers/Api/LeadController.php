@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AnalyticsEvent;
 use App\Models\Lead;
-use App\Models\User;
+use App\Models\Profile;
 use App\Services\NotifyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ class LeadController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $leads = Lead::where('owner_id', $request->user()->id)->orderByDesc('created_at')->get();
+        $leads = Lead::where('profile_id', Profile::active($request->user())->id)->orderByDesc('created_at')->get();
 
         return response()->json(['leads' => $leads]);
     }
@@ -28,7 +28,7 @@ class LeadController extends Controller
             return response()->json(['error' => 'Invalid status'], 400);
         }
 
-        if ($lead->owner_id !== $request->user()->id) {
+        if ($lead->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -49,23 +49,24 @@ class LeadController extends Controller
             return response()->json(['error' => 'Name is required'], 400);
         }
 
-        $owner = User::where('username', $username)->first();
-        if (! $owner || ! $owner->lead_form_enabled) {
+        $profile = Profile::where('username', $username)->first();
+        if (! $profile || ! $profile->lead_form_enabled) {
             return response()->json(['error' => 'Lead form is not available for this profile'], 404);
         }
 
         $lead = Lead::create([
-            'owner_id' => $owner->id,
+            'owner_id' => $profile->user_id,
+            'profile_id' => $profile->id,
             'name' => substr((string) $name, 0, 200),
             'phone' => $request->input('phone') ? substr((string) $request->input('phone'), 0, 50) : null,
             'email' => $request->input('email') ? substr((string) $request->input('email'), 0, 200) : null,
             'message' => $request->input('message') ? substr((string) $request->input('message'), 0, 2000) : null,
         ]);
 
-        AnalyticsEvent::create(['user_id' => $owner->id, 'type' => 'LEAD_CREATED']);
+        AnalyticsEvent::create(['user_id' => $profile->user_id, 'profile_id' => $profile->id, 'type' => 'LEAD_CREATED']);
 
         $notify->notify(
-            $owner->id,
+            $profile->user_id,
             'LEAD_RECEIVED',
             'New lead received',
             "{$name} sent you a message through your TapConnect profile.",

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Models\SupportMessage;
 use App\Models\User;
 use App\Services\NotifyService;
@@ -16,11 +17,13 @@ class SupportController extends Controller
         $messages = SupportMessage::orderByDesc('created_at')->get();
 
         $userIds = $messages->pluck('user_id')->unique();
-        $usersById = User::whereIn('id', $userIds)->get()->keyBy('id')->map(fn (User $u) => [
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+        $profiles = Profile::whereIn('user_id', $userIds)->oldest()->get()->unique('user_id')->keyBy('user_id');
+        $usersById = $users->map(fn (User $u) => [
             'id' => $u->id,
-            'username' => $u->username,
-            'displayName' => $u->name,
-            'avatarUrl' => $u->avatar_url,
+            'username' => $profiles->get($u->id)?->username,
+            'displayName' => $profiles->get($u->id)?->name ?? $u->name,
+            'avatarUrl' => $profiles->get($u->id)?->avatar_url,
             'accountType' => $u->account_type,
         ]);
 
@@ -49,9 +52,10 @@ class SupportController extends Controller
         }
 
         $messages = SupportMessage::where('user_id', $userId)->orderBy('created_at')->get();
+        $profile = Profile::where('user_id', $userId)->oldest()->first();
 
         return response()->json([
-            'user' => ['id' => $user->id, 'username' => $user->username, 'displayName' => $user->name, 'avatarUrl' => $user->avatar_url, 'accountType' => $user->account_type],
+            'user' => ['id' => $user->id, 'username' => $profile?->username, 'displayName' => $profile?->name ?? $user->name, 'avatarUrl' => $profile?->avatar_url, 'accountType' => $user->account_type],
             'messages' => $messages,
         ]);
     }

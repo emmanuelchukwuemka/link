@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Card;
 use App\Models\Order;
-use App\Models\User;
+use App\Models\Profile;
 use App\Services\CardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,24 +27,24 @@ class CardController extends Controller
 
         $allCards = Card::orderByDesc('created_at')->get();
 
-        $userIds = $allCards->pluck('user_id')->filter()->unique()->values()->all();
+        $profileIds = $allCards->pluck('profile_id')->filter()->unique()->values()->all();
         $businessIds = $allCards->pluck('business_id')->filter()->unique()->values()->all();
         $orderIds = $allCards->pluck('order_id')->filter()->unique()->values()->all();
 
-        $users = $userIds ? User::whereIn('id', $userIds)->get()->keyBy('id') : collect();
+        $profiles = $profileIds ? Profile::whereIn('id', $profileIds)->get()->keyBy('id') : collect();
         $businesses = $businessIds ? Business::whereIn('id', $businessIds)->get()->keyBy('id') : collect();
         $orders = $orderIds ? Order::whereIn('id', $orderIds)->get()->keyBy('id') : collect();
 
         $tapStats = $cardService->getCardTapStats($allCards->pluck('code')->all());
 
-        $enriched = $allCards->map(function (Card $c) use ($users, $businesses, $orders, $tapStats) {
-            $user = $c->user_id ? $users->get($c->user_id) : null;
+        $enriched = $allCards->map(function (Card $c) use ($profiles, $businesses, $orders, $tapStats) {
+            $profile = $c->profile_id ? $profiles->get($c->profile_id) : null;
             $business = $c->business_id ? $businesses->get($c->business_id) : null;
             $order = $c->order_id ? $orders->get($c->order_id) : null;
             $stats = $tapStats->get($c->code) ?? ['taps30d' => 0, 'lastTap' => null];
 
             $arr = $c->toArray();
-            $arr['user'] = $user ? ['id' => $user->id, 'username' => $user->username, 'displayName' => $user->name, 'jobTitle' => $user->job_title] : null;
+            $arr['user'] = $profile ? ['id' => $profile->user_id, 'username' => $profile->username, 'displayName' => $profile->name, 'jobTitle' => $profile->job_title] : null;
             $arr['business'] = $business ? ['id' => $business->id, 'name' => $business->name] : null;
             $arr['order'] = $order ? ['id' => $order->id, 'orderNumber' => $order->order_number] : null;
             $arr['taps30d'] = $stats['taps30d'];
@@ -140,11 +140,11 @@ class CardController extends Controller
             return response()->json(['error' => 'Card not found'], 404);
         }
 
-        $user = $card->user_id ? User::find($card->user_id) : null;
+        $profile = $card->profile_id ? Profile::find($card->profile_id) : null;
         $business = $card->business_id ? Business::find($card->business_id) : null;
 
         $arr = $card->toArray();
-        $arr['user'] = $user ? ['id' => $user->id, 'username' => $user->username, 'displayName' => $user->name] : null;
+        $arr['user'] = $profile ? ['id' => $profile->user_id, 'username' => $profile->username, 'displayName' => $profile->name] : null;
         $arr['business'] = $business ? ['id' => $business->id, 'name' => $business->name] : null;
 
         return response()->json(['card' => $arr]);
@@ -165,7 +165,12 @@ class CardController extends Controller
                 if (! $request->input('userId')) {
                     return response()->json(['error' => 'userId is required'], 400);
                 }
+                $assignProfile = Profile::where('user_id', $request->input('userId'))->oldest()->first();
+                if (! $assignProfile) {
+                    return response()->json(['error' => 'That user has no profile yet'], 400);
+                }
                 $data['user_id'] = $request->input('userId');
+                $data['profile_id'] = $assignProfile->id;
                 $data['status'] = 'active';
                 $data['assigned_at'] = now();
                 break;
@@ -175,11 +180,13 @@ class CardController extends Controller
                 }
                 $data['business_id'] = $request->input('businessId');
                 $data['user_id'] = null;
+                $data['profile_id'] = null;
                 $data['status'] = 'reserved';
                 $data['assigned_at'] = now();
                 break;
             case 'unassign':
                 $data['user_id'] = null;
+                $data['profile_id'] = null;
                 $data['business_id'] = null;
                 $data['status'] = 'unassigned';
                 $data['assigned_at'] = null;
@@ -233,13 +240,13 @@ class CardController extends Controller
                 if (! Business::find($businessId)) {
                     return response()->json(['error' => 'Business not found'], 404);
                 }
-                $data = ['business_id' => $businessId, 'user_id' => null, 'status' => 'reserved', 'assigned_at' => now()];
+                $data = ['business_id' => $businessId, 'user_id' => null, 'profile_id' => null, 'status' => 'reserved', 'assigned_at' => now()];
                 break;
             case 'deactivate':
                 $data = ['status' => 'deactivated'];
                 break;
             case 'unassign':
-                $data = ['user_id' => null, 'business_id' => null, 'status' => 'unassigned', 'assigned_at' => null];
+                $data = ['user_id' => null, 'profile_id' => null, 'business_id' => null, 'status' => 'unassigned', 'assigned_at' => null];
                 break;
             default:
                 return response()->json(['error' => 'Unknown action'], 400);

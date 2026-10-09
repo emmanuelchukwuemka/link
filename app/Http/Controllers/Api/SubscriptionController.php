@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Services\NotifyService;
 use App\Services\PaystackClient;
 use Carbon\Carbon;
@@ -20,12 +21,13 @@ class SubscriptionController extends Controller
     public function checkout(Request $request): JsonResponse
     {
         $user = $request->user();
+        $profile = Profile::active($user);
 
         if (! $this->paystack->isConfigured()) {
             return response()->json(['error' => 'Payment processing is not available right now. Please try again later.'], 503);
         }
 
-        $reference = "SUB-{$user->id}-".round(microtime(true) * 1000);
+        $reference = "SUB-{$profile->id}-".round(microtime(true) * 1000);
 
         try {
             $tx = $this->paystack->initializeTransaction(
@@ -52,22 +54,23 @@ class SubscriptionController extends Controller
             return redirect($dashboardUrl);
         }
 
-        $userId = (int) explode('-', $reference)[1];
+        $profileId = (int) explode('-', $reference)[1];
 
         try {
             $result = $this->paystack->verifyTransaction($reference);
 
             if ($result['status'] === 'success') {
-                $user = \App\Models\User::find($userId);
-                if ($user) {
-                    $base = ($user->plan_expires_at && $user->plan_expires_at->isFuture()) ? $user->plan_expires_at : Carbon::now();
+                $profile = Profile::find($profileId);
+                if ($profile) {
+                    $base = ($profile->plan_expires_at && $profile->plan_expires_at->isFuture()) ? $profile->plan_expires_at : Carbon::now();
                     $newExpiry = $base->copy()->addYear();
 
-                    $user->update(['plan' => 'pro', 'plan_expires_at' => $newExpiry]);
+                    $profile->update(['plan' => 'pro', 'plan_expires_at' => $newExpiry]);
 
                     try {
                         \App\Models\SubscriptionPayment::create([
-                            'user_id' => $userId,
+                            'user_id' => $profile->user_id,
+                            'profile_id' => $profile->id,
                             'plan' => 'pro',
                             'amount' => config('plans.pro_plan_price_naira'),
                             'reference' => $reference,
@@ -79,7 +82,7 @@ class SubscriptionController extends Controller
                     }
 
                     $this->notify->notify(
-                        $userId,
+                        $profile->user_id,
                         'SUBSCRIPTION_ACTIVATED',
                         'You are now on Pro',
                         'Your TapConnect Pro subscription is active. Enjoy the extra customization, analytics and lead capture.',
@@ -90,8 +93,9 @@ class SubscriptionController extends Controller
                 }
             }
 
+            $profile = Profile::find($profileId);
             $this->notify->notify(
-                $userId,
+                $profile?->user_id ?? $profileId,
                 'PAYMENT_FAILED',
                 'Payment failed',
                 'We could not confirm your Pro subscription payment. Please try again.',

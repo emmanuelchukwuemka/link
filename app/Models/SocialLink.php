@@ -9,10 +9,15 @@ class SocialLink extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['platform', 'url', 'position', 'user_id'];
+    protected $fillable = ['platform', 'url', 'position', 'user_id', 'profile_id'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Link extends Model
 {
-    protected $fillable = ['title', 'url', 'thumbnail', 'icon_name', 'description', 'is_active', 'position', 'clicks', 'user_id'];
+    protected $fillable = ['title', 'url', 'thumbnail', 'icon_name', 'description', 'is_active', 'position', 'clicks', 'user_id', 'profile_id'];
 
     protected function casts(): array
     {
@@ -17,5 +17,10 @@ class Link extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 }

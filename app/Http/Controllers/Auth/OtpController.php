@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpCodeMail;
 use App\Models\Business;
+use App\Models\Profile;
 use App\Models\User;
 use App\Services\OtpService;
 use App\Services\UsernameGenerator;
@@ -74,17 +75,24 @@ class OtpController extends Controller
 
         $username = UsernameGenerator::fromEmail($email);
 
-        $user = DB::transaction(function () use ($email, $username, $businessName) {
+        [$user, $profile] = DB::transaction(function () use ($email, $username, $businessName) {
+            $name = $businessName !== '' ? $businessName : $username;
+
             $user = User::create([
                 'email' => $email,
-                'username' => $username,
                 // OTP verification proves email ownership, so no password is
                 // collected up front — a random, never-shared hash satisfies
                 // the column's NOT NULL constraint (matches the old app).
                 'password' => Hash::make(Str::random(32)),
-                'name' => $businessName !== '' ? $businessName : $username,
+                'name' => $name,
                 'account_type' => $businessName !== '' ? 'business_admin' : 'individual',
                 'email_verified_at' => now(),
+            ]);
+
+            $profile = Profile::create([
+                'user_id' => $user->id,
+                'username' => $username,
+                'name' => $name,
             ]);
 
             if ($businessName !== '') {
@@ -96,7 +104,7 @@ class OtpController extends Controller
                 $user->update(['business_id' => $business->id]);
             }
 
-            return $user;
+            return [$user, $profile];
         });
 
         Auth::login($user, remember: true);
@@ -105,7 +113,7 @@ class OtpController extends Controller
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
-                'username' => $user->username,
+                'username' => $profile->username,
                 'name' => $user->name,
                 'accountType' => $user->account_type,
             ],
@@ -170,7 +178,7 @@ class OtpController extends Controller
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
-                'username' => $user->username,
+                'username' => Profile::active($user)->username,
                 'name' => $user->name,
                 'accountType' => $user->account_type,
             ],

@@ -9,11 +9,16 @@ class SubscriptionPayment extends Model
 {
     const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'business_id', 'plan', 'amount', 'reference', 'status', 'raw_response'];
+    protected $fillable = ['user_id', 'profile_id', 'business_id', 'plan', 'amount', 'reference', 'status', 'raw_response'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 
     public function business(): BelongsTo

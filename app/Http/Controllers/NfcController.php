@@ -23,16 +23,17 @@ class NfcController extends Controller
             return redirect()->route('card-not-active');
         }
 
-        if ($card->user_id) {
-            $cardUser = $card->user;
+        if ($card->profile_id) {
+            $profile = $card->profile;
 
             AnalyticsEvent::create([
-                'user_id' => $cardUser->id,
+                'user_id' => $card->user_id,
+                'profile_id' => $profile->id,
                 'type' => 'NFC_TAP',
                 'meta' => json_encode(['cardCode' => $normalized]),
             ]);
 
-            return redirect()->route('profile.show', ['user' => $cardUser->username, 'src' => 'nfc']);
+            return redirect()->route('profile.show', ['user' => $profile->username, 'src' => 'nfc']);
         }
 
         return redirect()->route('activate-card', ['code' => $normalized]);

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -12,7 +12,7 @@ class ProfileUsernameController extends Controller
     private const USERNAME_RE = '/^[a-z0-9][a-z0-9-]{2,29}$/';
 
     /**
-     * Change the current user's username. Mirrors the old PUT
+     * Change the active profile's username. Mirrors the old PUT
      * /api/profile/username exactly — used both at registration (claim your
      * URL step) and later from account settings.
      */
@@ -24,13 +24,15 @@ class ProfileUsernameController extends Controller
             return response()->json(['error' => 'Username must be 3-30 characters: lowercase letters, numbers and hyphens only.'], 400);
         }
 
-        $existing = User::where('username', $normalized)->first();
-        if ($existing && $existing->id !== $request->user()->id) {
+        $profile = Profile::active($request->user());
+
+        $existing = Profile::where('username', $normalized)->first();
+        if ($existing && $existing->id !== $profile->id) {
             return response()->json(['error' => 'That username is already taken.'], 409);
         }
 
-        $request->user()->update(['username' => $normalized]);
+        $profile->update(['username' => $normalized]);
 
-        return response()->json(['user' => $request->user()->fresh()->makeHidden(['password', 'remember_token'])]);
+        return response()->json(['user' => $profile->fresh()]);
     }
 }

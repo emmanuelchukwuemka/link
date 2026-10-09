@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Support\Str;
 
 class UsernameGenerator
@@ -23,7 +23,7 @@ class UsernameGenerator
 
         $candidate = $base;
         $suffix = 0;
-        while (User::where('username', $candidate)->exists()) {
+        while (Profile::where('username', $candidate)->exists()) {
             $suffix++;
             $candidate = "{$base}{$suffix}";
         }

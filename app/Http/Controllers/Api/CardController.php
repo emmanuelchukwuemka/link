@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Card;
+use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,7 +18,9 @@ class CardController extends Controller
     }
 
     /**
-     * Authenticated user connects a physical card to their own profile.
+     * Authenticated user connects a physical card to one of their profiles —
+     * the currently active one (the dashboard's profile switcher), since a
+     * card points at a single public page, not the whole account.
      */
     public function claim(Request $request): JsonResponse
     {
@@ -39,8 +42,11 @@ class CardController extends Controller
             return response()->json(['error' => 'This card is already connected to another profile'], 409);
         }
 
+        $profile = Profile::active($request->user());
+
         $card->update([
             'user_id' => $request->user()->id,
+            'profile_id' => $profile->id,
             'business_id' => null,
             'status' => 'active',
             'assigned_at' => now(),

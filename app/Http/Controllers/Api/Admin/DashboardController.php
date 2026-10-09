@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Profile;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Carbon\Carbon;
@@ -144,15 +145,21 @@ class DashboardController extends Controller
             $productSalesBuckets30 = $this->seriesFromMap($days30, $paymentsMap30);
             $subsBuckets30 = $this->seriesFromMap($days30, $subsMap30);
 
-            $recentUsers = User::orderByDesc('created_at')->limit(5)->get()->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name ?: $u->username,
-                'username' => $u->username,
-                'email' => $u->email,
-                'accountType' => $u->account_type,
-                'createdAt' => $u->created_at,
-                'isActive' => $u->is_active,
-            ]);
+            $recentUserModels = User::orderByDesc('created_at')->limit(5)->get();
+            $recentUserProfiles = Profile::whereIn('user_id', $recentUserModels->pluck('id'))->oldest()->get()->unique('user_id')->keyBy('user_id');
+            $recentUsers = $recentUserModels->map(function (User $u) use ($recentUserProfiles) {
+                $username = $recentUserProfiles->get($u->id)?->username;
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name ?: $username,
+                    'username' => $username,
+                    'email' => $u->email,
+                    'accountType' => $u->account_type,
+                    'createdAt' => $u->created_at,
+                    'isActive' => $u->is_active,
+                ];
+            });
 
             $recentOrders = Order::orderByDesc('created_at')->limit(5)->with('items.product')->get()->map(function (Order $o) {
                 $names = $o->items->map(fn (OrderItem $i) => $i->product?->name)->filter()->values();
@@ -208,7 +215,7 @@ class DashboardController extends Controller
             $active = 0;
             $expiringSoon = 0;
             $expired = 0;
-            $proUsers = User::where('plan', '!=', 'free')->get(['plan_expires_at']);
+            $proUsers = Profile::where('plan', '!=', 'free')->get(['plan_expires_at']);
             $paidBusinesses = Business::where('plan', '!=', 'free')->get(['plan_expires_at']);
             /** @var Collection $allPaid */
             $allPaid = $proUsers->concat($paidBusinesses);

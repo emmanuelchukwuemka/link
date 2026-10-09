@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PortfolioItem;
+use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -11,21 +12,21 @@ class PortfolioItemController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $items = PortfolioItem::where('user_id', $request->user()->id)->orderBy('position')->get();
+        $items = PortfolioItem::where('profile_id', Profile::active($request->user())->id)->orderBy('position')->get();
 
         return response()->json(['items' => $items]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $profile = Profile::active($request->user());
 
-        if (! $user->isProActive()) {
+        if (! $profile->isProActive()) {
             return response()->json(['error' => 'Portfolio and gallery sections are a Pro feature. Upgrade to add them.'], 403);
         }
 
         $type = $request->input('type') === 'gallery' ? 'gallery' : 'project';
-        $lastPosition = PortfolioItem::where('user_id', $user->id)->max('position');
+        $lastPosition = PortfolioItem::where('profile_id', $profile->id)->max('position');
 
         $item = PortfolioItem::create([
             'title' => $request->input('title') ?: ($type === 'gallery' ? 'New Image' : 'New Project'),
@@ -34,7 +35,8 @@ class PortfolioItemController extends Controller
             'video_url' => $request->input('videoUrl'),
             'type' => $type,
             'position' => $lastPosition === null ? 0 : $lastPosition + 1,
-            'user_id' => $user->id,
+            'user_id' => $profile->user_id,
+            'profile_id' => $profile->id,
         ]);
 
         return response()->json(['item' => $item], 201);
@@ -42,7 +44,7 @@ class PortfolioItemController extends Controller
 
     public function update(Request $request, PortfolioItem $portfolioItem): JsonResponse
     {
-        if ($portfolioItem->user_id !== $request->user()->id) {
+        if ($portfolioItem->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -58,7 +60,7 @@ class PortfolioItemController extends Controller
 
     public function destroy(Request $request, PortfolioItem $portfolioItem): JsonResponse
     {
-        if ($portfolioItem->user_id !== $request->user()->id) {
+        if ($portfolioItem->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 

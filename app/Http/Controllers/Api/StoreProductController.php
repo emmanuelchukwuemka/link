@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Models\StoreProduct;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,20 +12,20 @@ class StoreProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $products = StoreProduct::where('user_id', $request->user()->id)->orderBy('position')->get();
+        $products = StoreProduct::where('profile_id', Profile::active($request->user())->id)->orderBy('position')->get();
 
         return response()->json(['products' => $products]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $profile = Profile::active($request->user());
 
-        if (! $user->isProActive()) {
+        if (! $profile->isProActive()) {
             return response()->json(['error' => 'Adding products to your shop is a Pro feature. Upgrade to start selling.'], 403);
         }
 
-        $lastPosition = StoreProduct::where('user_id', $user->id)->max('position');
+        $lastPosition = StoreProduct::where('profile_id', $profile->id)->max('position');
 
         $product = StoreProduct::create([
             'name' => $request->input('name') ?: 'New Product',
@@ -35,7 +36,8 @@ class StoreProductController extends Controller
             'category' => $request->input('category'),
             'availability' => $request->input('availability') ?: 'available',
             'position' => $lastPosition === null ? 0 : $lastPosition + 1,
-            'user_id' => $user->id,
+            'user_id' => $profile->user_id,
+            'profile_id' => $profile->id,
         ]);
 
         return response()->json(['product' => $product], 201);
@@ -43,7 +45,7 @@ class StoreProductController extends Controller
 
     public function update(Request $request, StoreProduct $storeProduct): JsonResponse
     {
-        if ($storeProduct->user_id !== $request->user()->id) {
+        if ($storeProduct->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -70,7 +72,7 @@ class StoreProductController extends Controller
 
     public function destroy(Request $request, StoreProduct $storeProduct): JsonResponse
     {
-        if ($storeProduct->user_id !== $request->user()->id) {
+        if ($storeProduct->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 

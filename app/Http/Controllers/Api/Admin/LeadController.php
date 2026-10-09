@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Lead;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ class LeadController extends Controller
     private function withOwner(Lead $lead): array
     {
         $arr = $lead->toArray();
-        $arr['owner'] = $lead->owner ? ['username' => $lead->owner->username, 'displayName' => $lead->owner->name] : null;
+        $ownerProfile = $lead->owner_id ? Profile::where('user_id', $lead->owner_id)->oldest()->first() : null;
+        $arr['owner'] = $lead->owner ? ['username' => $ownerProfile?->username, 'displayName' => $lead->owner->name] : null;
 
         return $arr;
     }
@@ -43,6 +45,7 @@ class LeadController extends Controller
 
         $lead = Lead::create([
             'owner_id' => $ownerId,
+            'profile_id' => Profile::where('user_id', $ownerId)->oldest()->value('id'),
             'name' => $name,
             'email' => $request->input('email') ?: null,
             'phone' => $request->input('phone') ?: null,
@@ -112,7 +115,7 @@ class LeadController extends Controller
         if (! $lead->email) {
             return response()->json(['error' => 'This lead has no email on file, so an account cannot be created'], 400);
         }
-        if (User::where('email', $lead->email)->orWhere('username', $username)->exists()) {
+        if (User::where('email', $lead->email)->exists() || Profile::where('username', $username)->exists()) {
             return response()->json(['error' => 'A user with this email or username already exists'], 409);
         }
 
@@ -120,14 +123,19 @@ class LeadController extends Controller
             if ($type === 'individual') {
                 $user = User::create([
                     'email' => $lead->email,
-                    'username' => $username,
                     'password' => $password,
                     'name' => $lead->name,
-                    'phone' => $lead->phone ?: null,
                     'account_type' => 'individual',
                 ]);
 
-                return ['user' => ['id' => $user->id, 'username' => $user->username, 'email' => $user->email, 'displayName' => $user->name, 'accountType' => $user->account_type]];
+                Profile::create([
+                    'user_id' => $user->id,
+                    'username' => $username,
+                    'name' => $lead->name,
+                    'phone' => $lead->phone ?: null,
+                ]);
+
+                return ['user' => ['id' => $user->id, 'username' => $username, 'email' => $user->email, 'displayName' => $user->name, 'accountType' => $user->account_type]];
             }
 
             $base = $this->slugify($businessName);
@@ -140,11 +148,16 @@ class LeadController extends Controller
 
             $owner = User::create([
                 'email' => $lead->email,
-                'username' => $username,
                 'password' => $password,
                 'name' => $lead->name,
-                'phone' => $lead->phone ?: null,
                 'account_type' => 'business_admin',
+            ]);
+
+            Profile::create([
+                'user_id' => $owner->id,
+                'username' => $username,
+                'name' => $lead->name,
+                'phone' => $lead->phone ?: null,
             ]);
 
             $business = Business::create([
@@ -155,7 +168,7 @@ class LeadController extends Controller
                 'email' => $lead->email,
             ]);
 
-            return ['business' => ['id' => $business->id, 'name' => $business->name, 'slug' => $business->slug], 'owner' => ['id' => $owner->id, 'username' => $owner->username, 'email' => $owner->email]];
+            return ['business' => ['id' => $business->id, 'name' => $business->name, 'slug' => $business->slug], 'owner' => ['id' => $owner->id, 'username' => $username, 'email' => $owner->email]];
         });
 
         $lead->update(['status' => 'converted']);

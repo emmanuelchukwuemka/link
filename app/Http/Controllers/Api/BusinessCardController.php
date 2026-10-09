@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Card;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,15 +29,19 @@ class BusinessCardController extends Controller
         $cards = Card::where('business_id', $business->id)
             ->orWhereIn('user_id', $employeeIds)
             ->orderByDesc('created_at')
-            ->get()
-            ->map(function (Card $c) {
-                $arr = $c->toArray();
-                $arr['user'] = $c->user ? ['id' => $c->user->id, 'username' => $c->user->username, 'displayName' => $c->user->name] : null;
+            ->get();
 
-                return $arr;
-            });
+        $profilesById = Profile::whereIn('id', $cards->pluck('profile_id')->filter())->get()->keyBy('id');
 
-        return response()->json(['cards' => $cards]);
+        $cardsOut = $cards->map(function (Card $c) use ($profilesById) {
+            $arr = $c->toArray();
+            $profile = $c->profile_id ? $profilesById->get($c->profile_id) : null;
+            $arr['user'] = $profile ? ['id' => $profile->user_id, 'username' => $profile->username, 'displayName' => $profile->name] : null;
+
+            return $arr;
+        });
+
+        return response()->json(['cards' => $cardsOut]);
     }
 
     public function assign(Request $request, string $code): JsonResponse
@@ -59,9 +64,10 @@ class BusinessCardController extends Controller
                 return response()->json(['error' => 'That employee is not on your team'], 400);
             }
 
-            $card->update(['user_id' => $employeeId, 'status' => 'active', 'assigned_at' => now()]);
+            $profile = Profile::where('user_id', $employeeId)->oldest()->first();
+            $card->update(['user_id' => $employeeId, 'profile_id' => $profile?->id, 'status' => 'active', 'assigned_at' => now()]);
         } else {
-            $card->update(['user_id' => null, 'status' => 'reserved', 'assigned_at' => null]);
+            $card->update(['user_id' => null, 'profile_id' => null, 'status' => 'reserved', 'assigned_at' => null]);
         }
 
         return response()->json(['card' => $card->fresh()]);

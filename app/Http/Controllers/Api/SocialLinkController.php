@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Models\SocialLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,7 +12,8 @@ class SocialLinkController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $socialLinks = SocialLink::where('user_id', $request->user()->id)->orderBy('position')->get();
+        $profile = Profile::active($request->user());
+        $socialLinks = SocialLink::where('profile_id', $profile->id)->orderBy('position')->get();
 
         return response()->json(['socialLinks' => $socialLinks]);
     }
@@ -25,14 +27,15 @@ class SocialLinkController extends Controller
             return response()->json(['error' => 'Platform and URL are required'], 400);
         }
 
-        $user = $request->user();
-        $lastPosition = SocialLink::where('user_id', $user->id)->max('position');
+        $profile = Profile::active($request->user());
+        $lastPosition = SocialLink::where('profile_id', $profile->id)->max('position');
 
         $socialLink = SocialLink::create([
             'platform' => $platform,
             'url' => $url,
             'position' => $lastPosition === null ? 0 : $lastPosition + 1,
-            'user_id' => $user->id,
+            'user_id' => $profile->user_id,
+            'profile_id' => $profile->id,
         ]);
 
         return response()->json(['socialLink' => $socialLink], 201);
@@ -40,7 +43,7 @@ class SocialLinkController extends Controller
 
     public function update(Request $request, SocialLink $socialLink): JsonResponse
     {
-        if ($socialLink->user_id !== $request->user()->id) {
+        if ($socialLink->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -58,7 +61,7 @@ class SocialLinkController extends Controller
 
     public function destroy(Request $request, SocialLink $socialLink): JsonResponse
     {
-        if ($socialLink->user_id !== $request->user()->id) {
+        if ($socialLink->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 

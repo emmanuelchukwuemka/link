@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Business;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,16 +24,22 @@ class UserController extends Controller
 
         $businessesById = $businessIds->isNotEmpty() ? Business::whereIn('id', $businessIds)->get()->keyBy('id') : collect();
         $ownedBusinesses = Business::whereIn('owner_id', $userIds)->get()->keyBy('owner_id');
+        // One row per account — shows its primary (first-created) profile.
+        // An account with several profiles only surfaces that one here;
+        // the admin panel doesn't yet have a per-profile drill-down view.
+        $primaryProfiles = Profile::whereIn('user_id', $userIds)->oldest()->get()->unique('user_id')->keyBy('user_id');
 
-        $result = $users->map(function (User $u) use ($businessesById, $ownedBusinesses) {
+        $result = $users->map(function (User $u) use ($businessesById, $ownedBusinesses, $primaryProfiles) {
+            $profile = $primaryProfiles->get($u->id);
+
             return [
                 'id' => $u->id,
-                'username' => $u->username,
+                'username' => $profile?->username,
                 'email' => $u->email,
-                'displayName' => $u->name,
+                'displayName' => $profile?->name ?? $u->name,
                 'accountType' => $u->account_type,
-                'plan' => $u->plan,
-                'planExpiresAt' => $u->plan_expires_at,
+                'plan' => $profile?->plan ?? 'free',
+                'planExpiresAt' => $profile?->plan_expires_at,
                 'businessId' => $u->business_id,
                 'createdAt' => $u->created_at,
                 'isActive' => $u->is_active,
@@ -62,22 +69,29 @@ class UserController extends Controller
             return response()->json(['error' => 'businessId is required for employee accounts'], 400);
         }
 
-        if (User::where('email', $email)->orWhere('username', $username)->exists()) {
+        if (User::where('email', $email)->exists() || Profile::where('username', $username)->exists()) {
             return response()->json(['error' => 'A user with this email or username already exists'], 409);
         }
 
+        $name = $request->input('displayName') ?: $username;
+
         $user = User::create([
             'email' => $email,
-            'username' => $username,
             'password' => $password,
-            'name' => $request->input('displayName') ?: $username,
+            'name' => $name,
             'account_type' => $accountType,
             'business_id' => $accountType === 'employee' ? $businessId : null,
         ]);
 
+        Profile::create([
+            'user_id' => $user->id,
+            'username' => $username,
+            'name' => $name,
+        ]);
+
         return response()->json(['user' => [
             'id' => $user->id,
-            'username' => $user->username,
+            'username' => $username,
             'email' => $user->email,
             'accountType' => $user->account_type,
         ]], 201);

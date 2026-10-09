@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Link;
+use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,17 +13,18 @@ class LinkController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $links = Link::where('user_id', $request->user()->id)->orderBy('position')->get();
+        $profile = Profile::active($request->user());
+        $links = Link::where('profile_id', $profile->id)->orderBy('position')->get();
 
         return response()->json(['links' => $links]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $profile = Profile::active($request->user());
 
-        $linkCount = Link::where('user_id', $user->id)->count();
-        if (! $user->isProActive() && $linkCount >= config('plans.free_link_limit')) {
+        $linkCount = Link::where('profile_id', $profile->id)->count();
+        if (! $profile->isProActive() && $linkCount >= config('plans.free_link_limit')) {
             $limit = config('plans.free_link_limit');
 
             return response()->json([
@@ -30,7 +32,7 @@ class LinkController extends Controller
             ], 403);
         }
 
-        $lastPosition = Link::where('user_id', $user->id)->max('position');
+        $lastPosition = Link::where('profile_id', $profile->id)->max('position');
 
         $link = Link::create([
             'title' => $request->input('title') ?: 'New Link',
@@ -39,7 +41,8 @@ class LinkController extends Controller
             'icon_name' => $request->input('iconName'),
             'description' => $request->input('description'),
             'position' => $lastPosition === null ? 0 : $lastPosition + 1,
-            'user_id' => $user->id,
+            'user_id' => $profile->user_id,
+            'profile_id' => $profile->id,
         ]);
 
         return response()->json(['link' => $link], 201);
@@ -47,7 +50,7 @@ class LinkController extends Controller
 
     public function update(Request $request, Link $link): JsonResponse
     {
-        if ($link->user_id !== $request->user()->id) {
+        if ($link->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -74,7 +77,7 @@ class LinkController extends Controller
 
     public function destroy(Request $request, Link $link): JsonResponse
     {
-        if ($link->user_id !== $request->user()->id) {
+        if ($link->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -85,7 +88,7 @@ class LinkController extends Controller
 
     public function toggleActive(Request $request, Link $link): JsonResponse
     {
-        if ($link->user_id !== $request->user()->id) {
+        if ($link->profile_id !== Profile::active($request->user())->id) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -101,7 +104,8 @@ class LinkController extends Controller
             return response()->json(['error' => 'Missing ids'], 400);
         }
 
-        $ownedIds = Link::where('user_id', $request->user()->id)->pluck('id')->all();
+        $profile = Profile::active($request->user());
+        $ownedIds = Link::where('profile_id', $profile->id)->pluck('id')->all();
         if (count(array_diff($ids, $ownedIds)) > 0) {
             return response()->json(['error' => 'Not found'], 404);
         }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Card;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,20 +31,25 @@ class BusinessEmployeeController extends Controller
             return response()->json(['error' => 'Business not found'], 404);
         }
 
-        $employees = User::where('business_id', $business->id)
-            ->orderByDesc('created_at')
-            ->with('cards:id,code,user_id')
-            ->get()
-            ->map(fn (User $e) => [
+        $employeeUsers = User::where('business_id', $business->id)->orderByDesc('created_at')->get();
+        $profilesByUser = Profile::whereIn('user_id', $employeeUsers->pluck('id'))->oldest()->get()->groupBy('user_id');
+        $cardsByProfile = Card::whereIn('profile_id', $profilesByUser->flatten()->pluck('id'))->get(['id', 'code', 'profile_id'])->groupBy('profile_id');
+
+        $employees = $employeeUsers->map(function (User $e) use ($profilesByUser, $cardsByProfile) {
+            $profile = $profilesByUser->get($e->id)?->first();
+            $cards = $profile ? ($cardsByProfile->get($profile->id) ?? collect()) : collect();
+
+            return [
                 'id' => $e->id,
-                'username' => $e->username,
+                'username' => $profile?->username,
                 'email' => $e->email,
-                'displayName' => $e->name,
-                'jobTitle' => $e->job_title,
-                'department' => $e->department,
+                'displayName' => $profile?->name ?? $e->name,
+                'jobTitle' => $profile?->job_title,
+                'department' => $profile?->department,
                 'createdAt' => $e->created_at,
-                'cards' => $e->cards->map(fn (Card $c) => ['id' => $c->id, 'code' => $c->code])->values(),
-            ]);
+                'cards' => $cards->map(fn (Card $c) => ['id' => $c->id, 'code' => $c->code])->values(),
+            ];
+        });
 
         return response()->json(['employees' => $employees]);
     }
@@ -68,28 +74,35 @@ class BusinessEmployeeController extends Controller
             return response()->json(['error' => "Your {$business->plan} plan supports up to {$limit} team members. Upgrade to add more."], 403);
         }
 
-        if (User::where('email', $email)->orWhere('username', $username)->exists()) {
+        if (User::where('email', $email)->exists() || Profile::where('username', $username)->exists()) {
             return response()->json(['error' => 'A user with this email or username already exists'], 409);
         }
 
+        $displayName = $request->input('displayName') ?: $username;
+
         $employee = User::create([
             'email' => $email,
-            'username' => $username,
             'password' => $password,
-            'name' => $request->input('displayName') ?: $username,
-            'job_title' => $request->input('jobTitle'),
-            'department' => $request->input('department'),
+            'name' => $displayName,
             'account_type' => 'employee',
             'business_id' => $business->id,
         ]);
 
+        $profile = Profile::create([
+            'user_id' => $employee->id,
+            'username' => $username,
+            'name' => $displayName,
+            'job_title' => $request->input('jobTitle'),
+            'department' => $request->input('department'),
+        ]);
+
         return response()->json(['employee' => [
             'id' => $employee->id,
-            'username' => $employee->username,
+            'username' => $profile->username,
             'email' => $employee->email,
-            'displayName' => $employee->name,
-            'jobTitle' => $employee->job_title,
-            'department' => $employee->department,
+            'displayName' => $profile->name,
+            'jobTitle' => $profile->job_title,
+            'department' => $profile->department,
             'createdAt' => $employee->created_at,
         ]], 201);
     }
@@ -106,18 +119,22 @@ class BusinessEmployeeController extends Controller
             return response()->json(['error' => 'Not found'], 404);
         }
 
-        $employee->update([
+        $profile = Profile::where('user_id', $employee->id)->oldest()->first();
+        $profile?->update([
             'name' => $request->input('displayName'),
             'job_title' => $request->input('jobTitle'),
             'department' => $request->input('department'),
         ]);
+        if ($request->has('displayName')) {
+            $employee->update(['name' => $request->input('displayName')]);
+        }
 
         return response()->json(['employee' => [
             'id' => $employee->id,
-            'username' => $employee->username,
-            'displayName' => $employee->name,
-            'jobTitle' => $employee->job_title,
-            'department' => $employee->department,
+            'username' => $profile?->username,
+            'displayName' => $profile?->name,
+            'jobTitle' => $profile?->job_title,
+            'department' => $profile?->department,
         ]]);
     }
 
@@ -135,7 +152,7 @@ class BusinessEmployeeController extends Controller
 
         $employee->update(['business_id' => null, 'account_type' => 'individual']);
         Card::where('user_id', $id)->where('business_id', $business->id)
-            ->update(['user_id' => null, 'status' => 'unassigned', 'assigned_at' => null]);
+            ->update(['user_id' => null, 'profile_id' => null, 'status' => 'unassigned', 'assigned_at' => null]);
 
         return response()->json(['success' => true]);
     }
@@ -224,7 +241,7 @@ class BusinessEmployeeController extends Controller
 
             $username = $this->slugifyUsername($email, $displayName);
             $suffix = 1;
-            while (User::where('username', $username)->exists()) {
+            while (Profile::where('username', $username)->exists()) {
                 $username = $this->slugifyUsername($email, $displayName).($suffix++);
             }
 
@@ -232,21 +249,26 @@ class BusinessEmployeeController extends Controller
 
             $employee = User::create([
                 'email' => $email,
-                'username' => $username,
                 'password' => $tempPassword,
+                'name' => $displayName,
+                'account_type' => 'employee',
+                'business_id' => $business->id,
+            ]);
+
+            $profile = Profile::create([
+                'user_id' => $employee->id,
+                'username' => $username,
                 'name' => $displayName,
                 'phone' => $phone ?: null,
                 'job_title' => $jobTitle ?: null,
                 'department' => $department ?: null,
                 'avatar_url' => $avatarUrl,
-                'account_type' => 'employee',
-                'business_id' => $business->id,
             ]);
 
             if ($cardCode) {
                 $card = Card::where('code', $cardCode)->first();
                 if ($card && ($card->business_id === $business->id || (! $card->business_id && ! $card->user_id))) {
-                    $card->update(['user_id' => $employee->id, 'business_id' => $business->id, 'status' => 'active', 'assigned_at' => now()]);
+                    $card->update(['user_id' => $employee->id, 'profile_id' => $profile->id, 'business_id' => $business->id, 'status' => 'active', 'assigned_at' => now()]);
                 }
             }
 

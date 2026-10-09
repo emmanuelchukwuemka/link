@@ -9,10 +9,15 @@ class PortfolioItem extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['user_id', 'title', 'description', 'image_url', 'video_url', 'type', 'position'];
+    protected $fillable = ['user_id', 'profile_id', 'title', 'description', 'image_url', 'video_url', 'type', 'position'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class);
     }
 }

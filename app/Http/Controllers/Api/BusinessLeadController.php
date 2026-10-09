@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Lead;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,15 +23,19 @@ class BusinessLeadController extends Controller
 
         $leads = Lead::whereIn('owner_id', $employeeIds)
             ->orderByDesc('created_at')
-            ->with('owner:id,username,name')
-            ->get()
-            ->map(function (Lead $l) {
-                $arr = $l->toArray();
-                $arr['owner'] = $l->owner ? ['username' => $l->owner->username, 'displayName' => $l->owner->name] : null;
+            ->with('owner:id,name')
+            ->get();
 
-                return $arr;
-            });
+        $profilesByUser = Profile::whereIn('user_id', $employeeIds)->oldest()->get()->unique('user_id')->keyBy('user_id');
 
-        return response()->json(['leads' => $leads]);
+        $leadsOut = $leads->map(function (Lead $l) use ($profilesByUser) {
+            $arr = $l->toArray();
+            $profile = $profilesByUser->get($l->owner_id);
+            $arr['owner'] = $l->owner ? ['username' => $profile?->username, 'displayName' => $l->owner->name] : null;
+
+            return $arr;
+        });
+
+        return response()->json(['leads' => $leadsOut]);
     }
 }
