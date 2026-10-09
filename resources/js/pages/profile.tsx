@@ -161,7 +161,7 @@ export default function Profile({
 
     return (
         <div
-            className="min-h-dvh font-sans pt-20 pb-28 px-4 flex flex-col items-center relative overflow-hidden"
+            className="min-h-dvh font-sans pt-20 pb-44 px-4 flex flex-col items-center relative overflow-hidden"
             style={{
                 ...backgroundStyle({ bgType: user.bg_type, bgColor: user.bg_color, bgGradient: user.bg_gradient, bgImage: user.bg_image }),
                 color: user.text_color,
