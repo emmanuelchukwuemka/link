@@ -90,13 +90,13 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                     <section className="relative isolate overflow-hidden max-w-[1504px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 grid lg:grid-cols-2 gap-16 items-center">
                         <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
                             <img src="/hero-photo.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/92 via-[#0A0A0A]/70 to-[#0A0A0A]/40" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-[#0A0A0A]/30" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/96 via-[#0A0A0A]/90 to-[#0A0A0A]/55" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-[#0A0A0A]/40" />
                         </div>
 
                         <div className="flex flex-col gap-7 max-w-xl">
                             <Reveal>
-                                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/50 border border-white/15 rounded-full px-4 py-1.5 w-fit">
+                                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/70 border border-white/15 rounded-full px-4 py-1.5 w-fit">
                                     Powered by NFC + QR &middot; Smarter Connections
                                 </span>
                             </Reveal>
@@ -108,7 +108,7 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                                 </h1>
                             </Reveal>
                             <Reveal delay={160}>
-                                <p className="text-lg text-white/60 leading-relaxed">
+                                <p className="text-lg text-white/85 leading-relaxed">
                                     Create stunning digital profiles, business pages, mini websites and online stores &mdash; all connected to your physical TapConnect Digital Card.
                                 </p>
                             </Reveal>
@@ -176,48 +176,6 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                         </div>
                     </div>
                 </div>
-
-                {/* ===== How TapConnect Works ===== */}
-                <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-[1504px] mx-auto">
-                        <Reveal>
-                            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-14">
-                                <div>
-                                    <p className="text-xs font-semibold uppercase tracking-widest text-[#6B6B6B] mb-3">How TapConnect Works</p>
-                                    <h2 className="text-4xl sm:text-5xl font-bold leading-tight max-w-xl">From a Physical Card to Powerful Digital Experiences.</h2>
-                                </div>
-                                <div className="flex flex-col sm:items-end gap-4 max-w-sm">
-                                    <p className="text-[#6B6B6B]">It&apos;s simple. Buy a card, create your profile, and start winning the world in seconds.</p>
-                                    <Link href="/learn" className="inline-flex items-center gap-2 border border-[#E5E5E5] px-5 py-2.5 rounded-full font-semibold text-sm hover:bg-[#F7F7F5] transition-colors whitespace-nowrap">
-                                        Learn More <ArrowRight size={14} />
-                                    </Link>
-                                </div>
-                            </div>
-                        </Reveal>
-
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {STEPS.map((step, i) => {
-                                const Icon = step.icon;
-                                return (
-                                    <Reveal key={step.n} delay={i * 100}>
-                                        <div className="group">
-                                            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-[#F0F0EE] mb-5 shadow-sm">
-                                                <img src={step.image} alt={step.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-                                                <span className="absolute top-3 right-3 bg-white/90 text-black text-xs font-bold px-2.5 py-1 rounded-full">{step.n}</span>
-                                                <span className="absolute bottom-3 left-3 w-10 h-10 rounded-full bg-black text-white flex items-center justify-center shadow-lg">
-                                                    <Icon size={16} />
-                                                </span>
-                                            </div>
-                                            <h3 className="font-bold text-lg mb-2">{step.title}</h3>
-                                            <p className="text-sm text-[#6B6B6B] leading-relaxed">{step.body}</p>
-                                        </div>
-                                    </Reveal>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </section>
 
                 {/* ===== Our NFC Products ===== */}
                 <section id="products" className="py-16 px-4 sm:px-6 lg:px-8 bg-[#F7F7F5]">
@@ -293,6 +251,48 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                                                 color={p.colors[0]}
                                                 className="w-full flex items-center justify-center gap-1.5 bg-black text-white rounded-full py-2 sm:py-2.5 font-semibold text-xs sm:text-sm hover:bg-[#111111] transition-colors mt-3 sm:mt-4"
                                             />
+                                        </div>
+                                    </Reveal>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+
+                {/* ===== How TapConnect Works ===== */}
+                <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-[1504px] mx-auto">
+                        <Reveal>
+                            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-14">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-[#6B6B6B] mb-3">How TapConnect Works</p>
+                                    <h2 className="text-4xl sm:text-5xl font-bold leading-tight max-w-xl">From a Physical Card to Powerful Digital Experiences.</h2>
+                                </div>
+                                <div className="flex flex-col sm:items-end gap-4 max-w-sm">
+                                    <p className="text-[#6B6B6B]">It&apos;s simple. Buy a card, create your profile, and start winning the world in seconds.</p>
+                                    <Link href="/learn" className="inline-flex items-center gap-2 border border-[#E5E5E5] px-5 py-2.5 rounded-full font-semibold text-sm hover:bg-[#F7F7F5] transition-colors whitespace-nowrap">
+                                        Learn More <ArrowRight size={14} />
+                                    </Link>
+                                </div>
+                            </div>
+                        </Reveal>
+
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {STEPS.map((step, i) => {
+                                const Icon = step.icon;
+                                return (
+                                    <Reveal key={step.n} delay={i * 100}>
+                                        <div className="group">
+                                            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-[#F0F0EE] mb-5 shadow-sm">
+                                                <img src={step.image} alt={step.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                                                <span className="absolute top-3 right-3 bg-white/90 text-black text-xs font-bold px-2.5 py-1 rounded-full">{step.n}</span>
+                                                <span className="absolute bottom-3 left-3 w-10 h-10 rounded-full bg-black text-white flex items-center justify-center shadow-lg">
+                                                    <Icon size={16} />
+                                                </span>
+                                            </div>
+                                            <h3 className="font-bold text-lg mb-2">{step.title}</h3>
+                                            <p className="text-sm text-[#6B6B6B] leading-relaxed">{step.body}</p>
                                         </div>
                                     </Reveal>
                                 );

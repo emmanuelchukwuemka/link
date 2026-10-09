@@ -4,7 +4,7 @@ import { Crown, Wallet, Check, Loader2, AlertCircle, Link2 } from 'lucide-react'
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ImageUploader } from '@/components/image-uploader';
 import { ImageWithFallback } from '@/components/image-with-fallback';
-import { backgroundStyle } from '@/lib/profile/background';
+import { backgroundStyle, gradientsFromColor } from '@/lib/profile/background';
 import { buttonSizePadding, buttonSizeFontClass } from '@/lib/profile/buttonSize';
 import { SaveContactButton } from '@/components/profile-interactive';
 import { profileFontFamily } from '@/lib/profile/profileFonts';
@@ -373,7 +373,13 @@ function AppearanceInner() {
                                 {(['solid', 'gradient', 'image'] as const).map((t) => (
                                     <button
                                         key={t}
-                                        onClick={() => handleUpdate({ bgType: t })}
+                                        onClick={() =>
+                                            handleUpdate(
+                                                t === 'gradient' && !gradientsFromColor(profile.bgColor).includes(profile.bgGradient)
+                                                    ? { bgType: t, bgGradient: gradientsFromColor(profile.bgColor)[0] }
+                                                    : { bgType: t },
+                                            )
+                                        }
                                         className={`relative py-2 rounded-lg border-2 capitalize text-sm font-medium ${profile.bgType === t ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`}
                                     >
                                         {t}
@@ -390,7 +396,7 @@ function AppearanceInner() {
 
                             {profile.bgType === 'gradient' && (
                                 <div className="grid grid-cols-3 gap-3">
-                                    {GRADIENT_PRESETS.map((g) => (
+                                    {gradientsFromColor(profile.bgColor).map((g) => (
                                         <button
                                             key={g}
                                             onClick={() => handleUpdate({ bgGradient: g })}

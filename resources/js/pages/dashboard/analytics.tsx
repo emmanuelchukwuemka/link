@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Eye, MousePointerClick, Activity, Smartphone, QrCode, MessageSquareText, Phone, Mail, Globe, Share2, Package } from 'lucide-react';
+import { Eye, MousePointerClick, Activity, Smartphone, QrCode, MessageSquareText, Phone, Mail, Globe, Share2, Package, Link as LinkIcon } from 'lucide-react';
 import DashboardLayout from '@/layouts/dashboard-layout';
+
+type LinkStat = { id: number; title: string | null; url: string; clicks: number };
 
 type Summary = {
     views: number;
@@ -39,6 +41,7 @@ const EMPTY: Summary = {
 function AnalyticsInner() {
     const [range, setRange] = useState('lifetime');
     const [stats, setStats] = useState<Summary>(EMPTY);
+    const [linkStats, setLinkStats] = useState<LinkStat[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchStats = useCallback(async (r: string) => {
@@ -57,6 +60,15 @@ function AnalyticsInner() {
     useEffect(() => {
         fetchStats(range);
     }, [range, fetchStats]);
+
+    useEffect(() => {
+        // Link click counts are lifetime-only (not range-filterable), same as
+        // the links table itself - shown regardless of the selected range.
+        fetch('/api/links')
+            .then((res) => res.json())
+            .then((data) => setLinkStats((data.links || []).slice().sort((a: LinkStat, b: LinkStat) => b.clicks - a.clicks)))
+            .catch(() => setLinkStats([]));
+    }, []);
 
     const cards = [
         { label: 'Profile Views', value: stats.views, icon: Eye },
@@ -116,6 +128,21 @@ function AnalyticsInner() {
                     ))}
                 </div>
             </div>
+
+            {linkStats.length > 0 && (
+                <div className="bg-white p-6 rounded-3xl shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Link Clicks</h3>
+                    <div className="space-y-2">
+                        {linkStats.map((link) => (
+                            <div key={link.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                                <LinkIcon size={16} className="text-gray-400 shrink-0" />
+                                <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">{link.title || link.url}</span>
+                                <span className="text-sm font-bold text-gray-900 shrink-0">{link.clicks.toLocaleString()} clicks</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {!loading && stats.views === 0 && (
                 <div className="bg-white p-8 rounded-3xl shadow-sm text-center text-black">
