@@ -3,7 +3,7 @@
 // useForm()/post() helpers, since they need multi-step client-side state
 // (step 1 -> step 2 -> step 3) without a full page visit between steps. This
 // starter kit has no axios/bootstrap.js, so XSRF has to be attached by hand.
-function xsrfToken(): string {
+export function xsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
     return match ? decodeURIComponent(match[1]) : '';
 }

@@ -3,11 +3,13 @@ import { Link } from '@inertiajs/react';
 import { Download, Send, CheckCircle2, Image as ImageIcon, Share2, X as CloseIcon, Link2, Check, MessageSquare } from 'lucide-react';
 import { WhatsAppIcon, XIcon, FacebookIcon, LinkedInIcon } from '@/components/brand-icons';
 import { ImageWithFallback } from '@/components/image-with-fallback';
+import { xsrfToken } from '@/lib/api';
 
 function track(username: string, type: string, meta?: Record<string, unknown>) {
     fetch('/api/analytics/track', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
         body: JSON.stringify({ username, type, meta }),
         keepalive: true,
     }).catch(() => {});
@@ -52,7 +54,12 @@ export function TrackedButtonLink({ id, href, className, children }: { id: numbe
             rel="noopener noreferrer"
             className={className}
             onClick={() => {
-                fetch(`/api/links/${id}/click`, { method: 'POST', keepalive: true }).catch(() => {});
+                fetch(`/api/links/${id}/click`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-XSRF-TOKEN': xsrfToken() },
+                    keepalive: true,
+                }).catch(() => {});
             }}
         >
             {children}
@@ -122,7 +129,8 @@ export function LeadForm({ username, className }: { username: string; className?
         try {
             const res = await fetch('/api/leads', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
                 body: JSON.stringify({ username, ...form }),
             });
             if (!res.ok) throw new Error();

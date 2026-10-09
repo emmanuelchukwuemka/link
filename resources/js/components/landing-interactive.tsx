@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Send, CheckCircle2 } from 'lucide-react';
 import { addToCart } from '@/lib/cart';
+import { xsrfToken } from '@/lib/api';
 
 export function BuyNowButton({
     productId,
@@ -91,7 +92,8 @@ export function NewsletterForm() {
         try {
             const res = await fetch('/api/newsletter', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
                 body: JSON.stringify({ email }),
             });
             if (!res.ok) throw new Error();
@@ -136,7 +138,8 @@ export function ContactForm() {
         try {
             const res = await fetch('/api/contact', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
                 body: JSON.stringify(form),
             });
             const data = await res.json();
