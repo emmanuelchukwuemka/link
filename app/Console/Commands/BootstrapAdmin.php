@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
@@ -47,17 +48,22 @@ class BootstrapAdmin extends Command
         $username = Str::slug(Str::before($email, '@'), '');
         $suffix = 1;
         $base = $username;
-        while (User::where('username', $username)->exists()) {
+        while (Profile::where('username', $username)->exists()) {
             $username = $base.$suffix++;
         }
 
-        User::create([
+        $user = User::create([
             'name' => 'Admin',
-            'username' => $username,
             'email' => $email,
             'password' => Hash::make($password),
             'email_verified_at' => now(),
             'account_type' => 'admin',
+        ]);
+
+        Profile::create([
+            'user_id' => $user->id,
+            'username' => $username,
+            'name' => 'Admin',
         ]);
 
         $this->info("Created admin {$email} (username: {$username}).");
