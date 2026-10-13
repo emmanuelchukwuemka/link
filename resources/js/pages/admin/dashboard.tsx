@@ -60,6 +60,7 @@ function StatCard({
     iconBg,
     iconColor,
     format,
+    href,
 }: {
     label: string;
     value: number;
@@ -69,10 +70,11 @@ function StatCard({
     iconBg: string;
     iconColor: string;
     format?: (n: number) => string;
+    href?: string;
 }) {
     const positive = change >= 0;
-    return (
-        <div className="bg-white p-5 rounded-3xl shadow-sm">
+    const body = (
+        <>
             <div className="flex items-center gap-3 mb-3">
                 <span className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
                     <Icon size={19} className={iconColor} />
@@ -91,8 +93,18 @@ function StatCard({
                     <Sparkline data={series} positive={positive} />
                 </div>
             </div>
-        </div>
+        </>
     );
+
+    if (href) {
+        return (
+            <Link href={href} className="block bg-white p-5 rounded-3xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+                {body}
+            </Link>
+        );
+    }
+
+    return <div className="bg-white p-5 rounded-3xl shadow-sm">{body}</div>;
 }
 
 function DualAreaChart({ dates, a, b, aLabel, bLabel }: { dates: string[]; a: number[]; b: number[]; aLabel: string; bLabel: string }) {
@@ -414,12 +426,12 @@ function AdminDashboardInner() {
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                <StatCard label="Total Users" value={data.stats.users.value} change={data.stats.users.change} series={data.stats.users.series} icon={Users} iconBg="bg-blue-50" iconColor="text-blue-600" />
-                <StatCard label="Businesses" value={data.stats.businesses.value} change={data.stats.businesses.change} series={data.stats.businesses.series} icon={Building2} iconBg="bg-green-50" iconColor="text-green-600" />
-                <StatCard label="Employees" value={data.stats.employees.value} change={data.stats.employees.change} series={data.stats.employees.series} icon={UserPlus} iconBg="bg-purple-50" iconColor="text-purple-600" />
-                <StatCard label="Total Orders" value={data.stats.orders.value} change={data.stats.orders.change} series={data.stats.orders.series} icon={ShoppingCart} iconBg="bg-amber-50" iconColor="text-amber-600" />
-                <StatCard label="TapConnect Cards Sold" value={data.stats.cardsSold.value} change={data.stats.cardsSold.change} series={data.stats.cardsSold.series} icon={CreditCard} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
-                <StatCard label="Total Revenue" value={data.stats.revenue.value} change={data.stats.revenue.change} series={data.stats.revenue.series} icon={Wallet} iconBg="bg-emerald-50" iconColor="text-emerald-600" format={(n) => `₦${n.toLocaleString()}`} />
+                <StatCard label="Total Users" value={data.stats.users.value} change={data.stats.users.change} series={data.stats.users.series} icon={Users} iconBg="bg-blue-50" iconColor="text-blue-600" href="/admin/users" />
+                <StatCard label="Businesses" value={data.stats.businesses.value} change={data.stats.businesses.change} series={data.stats.businesses.series} icon={Building2} iconBg="bg-green-50" iconColor="text-green-600" href="/admin/users?type=business_admin" />
+                <StatCard label="Employees" value={data.stats.employees.value} change={data.stats.employees.change} series={data.stats.employees.series} icon={UserPlus} iconBg="bg-purple-50" iconColor="text-purple-600" href="/admin/users?type=employee" />
+                <StatCard label="Total Orders" value={data.stats.orders.value} change={data.stats.orders.change} series={data.stats.orders.series} icon={ShoppingCart} iconBg="bg-amber-50" iconColor="text-amber-600" href="/admin/orders" />
+                <StatCard label="TapConnect Cards Sold" value={data.stats.cardsSold.value} change={data.stats.cardsSold.change} series={data.stats.cardsSold.series} icon={CreditCard} iconBg="bg-indigo-50" iconColor="text-indigo-600" href="/admin/cards" />
+                <StatCard label="Total Revenue" value={data.stats.revenue.value} change={data.stats.revenue.change} series={data.stats.revenue.series} icon={Wallet} iconBg="bg-emerald-50" iconColor="text-emerald-600" format={(n) => `₦${n.toLocaleString()}`} href="/admin/analytics" />
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
