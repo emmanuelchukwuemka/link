@@ -3,6 +3,8 @@
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureAdminApi;
 use App\Http\Middleware\EnsureBusinessAdmin;
+use App\Http\Middleware\EnsurePermission;
+use App\Http\Middleware\EnsurePermissionApi;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -25,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdmin::class,
             'admin_api' => EnsureAdminApi::class,
             'business_admin' => EnsureBusinessAdmin::class,
+            'permission' => EnsurePermission::class,
+            'permission_api' => EnsurePermissionApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

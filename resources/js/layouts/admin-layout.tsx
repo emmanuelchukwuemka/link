@@ -3,12 +3,14 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { Logo } from '@/components/logo';
 import { NotificationBell } from '@/components/notification-bell';
 import { ImageWithFallback } from '@/components/image-with-fallback';
-import { LayoutDashboard, Package, ClipboardList, CreditCard, Truck, Users, MessageSquareText, LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink, MessageCircle, Mail } from 'lucide-react';
+import { LayoutDashboard, Package, ClipboardList, CreditCard, Truck, Users, UserCog, MessageSquareText, LogOut, Menu, X, Crown, Megaphone, BarChart3, Search, ChevronDown, ChevronRight, ExternalLink, MessageCircle, Mail } from 'lucide-react';
 
 type AdminUser = {
     username: string;
     displayName: string | null;
     avatarUrl: string | null;
+    accountType: string;
+    permissions: string[];
 };
 
 type NavItem = { name: string; href: string; icon: React.ElementType; badge?: number } | { name: string; icon: React.ElementType; sub: { name: string; href: string }[] };
@@ -23,6 +25,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [messagesUnread, setMessagesUnread] = useState(0);
 
     useEffect(() => {
+        // Support/Messages are admin-only sections — staff never see their
+        // nav badges, so skip polling endpoints they can't access anyway.
+        if (me?.accountType !== 'admin') return;
+
         const loadSupportUnread = () => {
             fetch('/api/admin/support')
                 .then((res) => res.json())
@@ -48,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             loadMessagesUnread();
         }, 20000);
         return () => clearInterval(interval);
-    }, []);
+    }, [me]);
 
     const [openGroups, setOpenGroups] = useState<Set<string>>(
         new Set([...(pathname.startsWith('/admin/users') ? ['Users'] : []), ...(pathname.startsWith('/admin/products') || pathname.startsWith('/admin/categories') ? ['Products'] : [])]),
@@ -73,35 +79,52 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.post('/logout');
     };
 
+    const isStaff = me?.accountType === 'staff';
+    const perms = me?.permissions || [];
+    const can = (permission: string) => !isStaff || perms.includes(permission);
+
     const navItems: NavItem[] = [
-        { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-        {
-            name: 'Users',
-            icon: Users,
-            sub: [
-                { name: 'All Users', href: '/admin/users' },
-                { name: 'Individuals', href: '/admin/users?type=individual' },
-                { name: 'Businesses', href: '/admin/users?type=business_admin' },
-                { name: 'Employees', href: '/admin/users?type=employee' },
-            ],
-        },
-        {
-            name: 'Products',
-            icon: Package,
-            sub: [
-                { name: 'All Products', href: '/admin/products' },
-                { name: 'Categories', href: '/admin/categories' },
-            ],
-        },
-        { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
-        { name: 'TapConnect Cards', href: '/admin/cards', icon: CreditCard },
-        { name: 'Subscriptions', href: '/admin/subscriptions', icon: Crown },
-        { name: 'Leads', href: '/admin/leads', icon: MessageSquareText },
-        { name: 'Support', href: '/admin/support', icon: MessageCircle, badge: supportUnread },
-        { name: 'Messages', href: '/admin/messages', icon: Mail, badge: messagesUnread },
-        { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-        { name: 'Delivery', href: '/admin/delivery-zones', icon: Truck },
-        { name: 'Notifications', href: '/admin/notifications', icon: Megaphone },
+        ...(isStaff ? [] : [{ name: 'Dashboard', href: '/admin', icon: LayoutDashboard }]),
+        ...(can('manage_profiles')
+            ? [
+                  {
+                      name: 'Users',
+                      icon: Users,
+                      sub: [
+                          { name: 'All Users', href: '/admin/users' },
+                          { name: 'Individuals', href: '/admin/users?type=individual' },
+                          { name: 'Businesses', href: '/admin/users?type=business_admin' },
+                          { name: 'Employees', href: '/admin/users?type=employee' },
+                      ],
+                  },
+              ]
+            : []),
+        ...(isStaff
+            ? []
+            : [
+                  {
+                      name: 'Products',
+                      icon: Package,
+                      sub: [
+                          { name: 'All Products', href: '/admin/products' },
+                          { name: 'Categories', href: '/admin/categories' },
+                      ],
+                  },
+              ]),
+        ...(can('process_orders') ? [{ name: 'Orders', href: '/admin/orders', icon: ClipboardList }] : []),
+        ...(isStaff
+            ? []
+            : [
+                  { name: 'TapConnect Cards', href: '/admin/cards', icon: CreditCard },
+                  { name: 'Subscriptions', href: '/admin/subscriptions', icon: Crown },
+                  { name: 'Leads', href: '/admin/leads', icon: MessageSquareText },
+                  { name: 'Support', href: '/admin/support', icon: MessageCircle, badge: supportUnread },
+                  { name: 'Messages', href: '/admin/messages', icon: Mail, badge: messagesUnread },
+                  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+                  { name: 'Delivery', href: '/admin/delivery-zones', icon: Truck },
+                  { name: 'Notifications', href: '/admin/notifications', icon: Megaphone },
+                  { name: 'Staff', href: '/admin/staff', icon: UserCog },
+              ]),
     ];
 
     const isActive = (href: string) => {
@@ -214,7 +237,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     </div>
                                     <div className="hidden sm:block text-left">
                                         <p className="text-sm font-semibold leading-tight text-black">{me?.displayName || me?.username || 'Admin'}</p>
-                                        <p className="text-xs text-gray-600 leading-tight">Platform Administrator</p>
+                                        <p className="text-xs text-gray-600 leading-tight">{isStaff ? 'Staff' : 'Platform Administrator'}</p>
                                     </div>
                                     <ChevronDown size={16} className="text-gray-400 hidden sm:block" />
                                 </button>

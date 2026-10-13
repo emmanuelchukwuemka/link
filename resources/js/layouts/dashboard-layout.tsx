@@ -33,6 +33,7 @@ type CurrentUser = {
     avatar_url: string | null;
     account_type: string;
     plan: string;
+    impersonating?: boolean;
 };
 
 function planLabel(user: CurrentUser | null): string {
@@ -202,6 +203,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             <div className="flex-1 lg:ml-64 min-w-0">
+                {me?.impersonating && (
+                    <div className="bg-amber-400 text-black px-4 py-2 flex items-center justify-center gap-3 text-sm font-medium flex-wrap">
+                        <span>
+                            You&apos;re viewing as <strong>@{me.username}</strong>
+                        </span>
+                        <button
+                            onClick={() => router.post('/impersonate/stop')}
+                            className="bg-black text-white text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-800"
+                        >
+                            Return to Admin
+                        </button>
+                    </div>
+                )}
+
                 {/* Top bar */}
                 <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
                     <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">

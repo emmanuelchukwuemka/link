@@ -28,6 +28,8 @@ class MeController extends Controller
             'isActive' => $user->is_active,
             'ownedBusiness' => $user->ownedBusiness,
             'profileId' => $profile->id,
+            'permissions' => $user->permissions ?? [],
+            'impersonating' => $request->session()->has('impersonator_id'),
         ]);
 
         return response()->json(['user' => $merged]);

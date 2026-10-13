@@ -181,6 +181,7 @@ class OtpController extends Controller
                 'username' => Profile::active($user)->username,
                 'name' => $user->name,
                 'accountType' => $user->account_type,
+                'permissions' => $user->permissions ?? [],
             ],
         ]);
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, Ban, CheckCircle2 } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { Users, Ban, CheckCircle2, Wand2 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 import { apiFetch } from '@/lib/api';
 
@@ -56,6 +57,20 @@ function AdminUsersInner() {
         }
     };
 
+    const setUpProfile = async (u: UserRow) => {
+        setBusyId(u.id);
+        try {
+            const { ok, data } = await apiFetch(`/api/admin/users/${u.id}/impersonate`, {}, 'POST');
+            if (!ok) {
+                alert((data.error as string) || 'Could not open this account');
+                return;
+            }
+            router.visit('/dashboard');
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     if (loading) return <div className="text-center py-20 text-black">Loading...</div>;
 
     return (
@@ -94,21 +109,31 @@ function AdminUsersInner() {
                                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>{u.isActive ? 'Active' : 'Suspended'}</span>
                                 </td>
                                 <td className="p-4">
-                                    <button
-                                        onClick={() => toggleActive(u)}
-                                        disabled={busyId === u.id}
-                                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap disabled:opacity-50 ${u.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
-                                    >
-                                        {u.isActive ? (
-                                            <>
-                                                <Ban size={13} /> Suspend
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CheckCircle2 size={13} /> Reactivate
-                                            </>
-                                        )}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setUpProfile(u)}
+                                            disabled={busyId === u.id}
+                                            title="Open this account's dashboard to set up their profile, links, appearance and more"
+                                            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap disabled:opacity-50 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                        >
+                                            <Wand2 size={13} /> Set Up
+                                        </button>
+                                        <button
+                                            onClick={() => toggleActive(u)}
+                                            disabled={busyId === u.id}
+                                            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap disabled:opacity-50 ${u.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                                        >
+                                            {u.isActive ? (
+                                                <>
+                                                    <Ban size={13} /> Suspend
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 size={13} /> Reactivate
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

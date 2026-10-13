@@ -28,6 +28,7 @@ class User extends Authenticatable
         'account_type',
         'is_active',
         'business_id',
+        'permissions',
     ];
 
     /**
@@ -51,7 +52,22 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'permissions' => 'array',
         ];
+    }
+
+    /**
+     * Admins implicitly have every permission; staff only have what the
+     * main admin has explicitly granted them via the permissions column.
+     * Everyone else (individual/business_admin/employee) has none.
+     */
+    public function hasPermission(string $key): bool
+    {
+        if ($this->account_type === 'admin') {
+            return true;
+        }
+
+        return $this->account_type === 'staff' && in_array($key, $this->permissions ?? [], true);
     }
 
     public function business(): BelongsTo

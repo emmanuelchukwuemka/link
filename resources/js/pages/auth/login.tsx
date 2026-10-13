@@ -49,8 +49,21 @@ export default function Login() {
         if (mode === 'otp' && otpStep === 2) codeInputRef.current?.focus();
     }, [mode, otpStep]);
 
-    const afterLogin = (accountType: string) => {
-        router.visit(next || (accountType === 'admin' ? '/admin' : '/dashboard'));
+    const afterLogin = (accountType: string, permissions?: string[]) => {
+        if (next) {
+            router.visit(next);
+            return;
+        }
+        if (accountType === 'admin') {
+            router.visit('/admin');
+            return;
+        }
+        if (accountType === 'staff') {
+            const perms = permissions || [];
+            router.visit(perms.includes('manage_profiles') ? '/admin/users' : perms.includes('process_orders') ? '/admin/orders' : '/dashboard');
+            return;
+        }
+        router.visit('/dashboard');
     };
 
     const requestCode = async () => {
@@ -93,8 +106,8 @@ export default function Login() {
         try {
             const { ok, data } = await apiFetch('/otp/verify-login', { email: email.trim(), code: code.trim() });
             if (!ok) throw new Error((data.error as string) || 'Verification failed');
-            const user = data.user as { accountType: string };
-            afterLogin(user?.accountType);
+            const user = data.user as { accountType: string; permissions?: string[] };
+            afterLogin(user?.accountType, user?.permissions);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -113,8 +126,8 @@ export default function Login() {
         try {
             const { ok, data } = await apiFetch('/login', payload);
             if (!ok) throw new Error((data.error as string) || 'Login failed');
-            const user = data.user as { accountType: string };
-            afterLogin(user?.accountType);
+            const user = data.user as { accountType: string; permissions?: string[] };
+            afterLogin(user?.accountType, user?.permissions);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {

@@ -8,10 +8,12 @@ use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController
 use App\Http\Controllers\Api\Admin\ContactMessageController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\Admin\DeliveryZoneController as AdminDeliveryZoneController;
+use App\Http\Controllers\Api\Admin\ImpersonateController;
 use App\Http\Controllers\Api\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Api\Admin\NotificationSendController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\Api\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Api\Admin\SupportController as AdminSupportController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
@@ -307,10 +309,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         return Inertia::render('admin/delivery-zones');
     })->name('delivery-zones');
 
-    Route::get('orders', function () {
-        return Inertia::render('admin/orders');
-    })->name('orders');
-
     Route::get('cards', function () {
         return Inertia::render('admin/cards');
     })->name('cards');
@@ -319,9 +317,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         return Inertia::render('admin/cards-generate');
     })->name('cards.generate');
 
-    Route::get('users', function () {
-        return Inertia::render('admin/users');
-    })->name('users');
+    Route::get('staff', function () {
+        return Inertia::render('admin/staff');
+    })->name('staff');
 
     Route::get('subscriptions', function () {
         return Inertia::render('admin/subscriptions');
@@ -356,6 +354,29 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     })->name('support.show');
 });
 
+// Shared with staff: each route is individually gated by a specific
+// permission (see App\Support\StaffPermissions) instead of the blanket
+// 'admin' middleware above — admins pass every check automatically via
+// User::hasPermission().
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('permission:manage_profiles')->group(function () {
+        Route::get('users', function () {
+            return Inertia::render('admin/users');
+        })->name('users');
+    });
+
+    Route::middleware('permission:process_orders')->group(function () {
+        Route::get('orders', function () {
+            return Inertia::render('admin/orders');
+        })->name('orders');
+    });
+});
+
+// Stop-impersonating must sit outside every admin/staff gate: while
+// impersonating, the authenticated user IS the regular account being
+// viewed (individual/business_admin/employee), not admin or staff.
+Route::middleware(['auth'])->post('impersonate/stop', [ImpersonateController::class, 'stop'])->name('impersonate.stop');
+
 Route::middleware(['auth', 'admin_api'])->prefix('api/admin')->group(function () {
     Route::get('products', [AdminProductController::class, 'index']);
     Route::post('products', [AdminProductController::class, 'store']);
@@ -373,15 +394,12 @@ Route::middleware(['auth', 'admin_api'])->prefix('api/admin')->group(function ()
     Route::put('delivery-zones/{deliveryZone}', [AdminDeliveryZoneController::class, 'update']);
     Route::delete('delivery-zones/{deliveryZone}', [AdminDeliveryZoneController::class, 'destroy']);
 
-    Route::get('orders', [AdminOrderController::class, 'index']);
-    Route::patch('orders/{orderNumber}', [AdminOrderController::class, 'update']);
-
     Route::get('dashboard', AdminDashboardController::class);
     Route::get('analytics', AdminAnalyticsController::class);
 
-    Route::get('users', [AdminUserController::class, 'index']);
-    Route::post('users', [AdminUserController::class, 'store']);
-    Route::patch('users/{user}', [AdminUserController::class, 'update']);
+    Route::get('staff', [AdminStaffController::class, 'index']);
+    Route::post('staff', [AdminStaffController::class, 'store']);
+    Route::patch('staff/{staff}', [AdminStaffController::class, 'update']);
 
     Route::get('businesses', [AdminBusinessController::class, 'index']);
     Route::post('businesses', [AdminBusinessController::class, 'store']);
@@ -408,6 +426,22 @@ Route::middleware(['auth', 'admin_api'])->prefix('api/admin')->group(function ()
     Route::get('support/{userId}', [AdminSupportController::class, 'show']);
     Route::post('support/{userId}', [AdminSupportController::class, 'store']);
     Route::post('support/{userId}/read', [AdminSupportController::class, 'markRead']);
+});
+
+// Shared with staff — each sub-group gated by its own permission, same
+// split as the page routes above.
+Route::middleware(['auth'])->prefix('api/admin')->group(function () {
+    Route::middleware('permission_api:manage_profiles')->group(function () {
+        Route::get('users', [AdminUserController::class, 'index']);
+        Route::post('users', [AdminUserController::class, 'store']);
+        Route::patch('users/{user}', [AdminUserController::class, 'update']);
+        Route::post('users/{user}/impersonate', [ImpersonateController::class, 'start']);
+    });
+
+    Route::middleware('permission_api:process_orders')->group(function () {
+        Route::get('orders', [AdminOrderController::class, 'index']);
+        Route::patch('orders/{orderNumber}', [AdminOrderController::class, 'update']);
+    });
 });
 
 require __DIR__.'/settings.php';
