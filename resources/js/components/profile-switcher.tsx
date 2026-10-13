@@ -38,8 +38,6 @@ export function ProfileSwitcher() {
         const onClickOutside = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) {
                 setOpen(false);
-                setCreating(false);
-                setError('');
             }
         };
         document.addEventListener('mousedown', onClickOutside);
@@ -54,7 +52,7 @@ export function ProfileSwitcher() {
         const { ok } = await apiFetch('/api/profiles/switch', { profileId: id }, 'POST');
         setBusy(false);
         if (ok) {
-            router.visit(router.page.url, { preserveState: false });
+            router.reload();
         }
     };
 
@@ -74,7 +72,7 @@ export function ProfileSwitcher() {
         setCreating(false);
         setNewUsername('');
         setNewName('');
-        router.visit(router.page.url, { preserveState: false });
+        router.reload();
     };
 
     if (profiles.length === 0) return null;
@@ -114,39 +112,60 @@ export function ProfileSwitcher() {
                     ))}
 
                     <div className="border-t border-gray-100 mt-1 pt-1">
-                        {!creating ? (
-                            <button onClick={() => setCreating(true)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-black hover:bg-gray-50 font-medium">
-                                <Plus size={15} /> Create new profile
-                            </button>
-                        ) : (
-                            <div className="px-3 py-2 space-y-2">
+                        <button
+                            onClick={() => {
+                                setOpen(false);
+                                setCreating(true);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-black hover:bg-gray-50 font-medium"
+                        >
+                            <Plus size={15} /> Create new profile
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {creating && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => { setCreating(false); setError(''); }}>
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="text-lg font-bold mb-4 text-black">Create a new profile</h2>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-black mb-1">Display name</label>
                                 <input
+                                    autoFocus
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
-                                    placeholder="Display name"
-                                    className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-black text-black"
+                                    placeholder="e.g. My Business"
+                                    className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-black mb-1">Username</label>
                                 <input
                                     value={newUsername}
                                     onChange={(e) => setNewUsername(e.target.value.toLowerCase())}
                                     placeholder="username"
-                                    className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-black text-black"
+                                    className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black"
                                 />
-                                {error && <p className="text-xs text-red-500">{error}</p>}
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={createProfile}
-                                        disabled={busy}
-                                        className="flex-1 flex items-center justify-center gap-1.5 bg-black text-white rounded-lg py-1.5 text-sm font-semibold disabled:opacity-60"
-                                    >
-                                        {busy ? <Loader2 size={14} className="animate-spin" /> : 'Create'}
-                                    </button>
-                                    <button onClick={() => { setCreating(false); setError(''); }} className="px-3 py-1.5 text-sm text-gray-500 hover:text-black">
-                                        Cancel
-                                    </button>
-                                </div>
                             </div>
-                        )}
+                            {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm">{error}</div>}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => { setCreating(false); setError(''); }}
+                                    className="flex-1 bg-gray-100 text-black py-2.5 rounded-full font-semibold text-sm hover:bg-gray-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={createProfile}
+                                    disabled={busy}
+                                    className="flex-1 flex items-center justify-center gap-1.5 bg-black text-white py-2.5 rounded-full font-semibold text-sm hover:bg-gray-800 disabled:opacity-60"
+                                >
+                                    {busy ? <Loader2 size={14} className="animate-spin" /> : 'Create'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
