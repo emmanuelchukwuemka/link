@@ -43,7 +43,7 @@ type HomeProduct = {
 export default function Home({ products }: { products: HomeProduct[] }) {
     return (
         <>
-            <Head title="TapConnect — Your Identity, In One Tap" />
+            <Head title="TapConnect — Easier Connection" />
             <main id="top" className="min-h-screen font-sans bg-white text-[#111111]">
                 {/* ===== Header + Hero (dark) ===== */}
                 <div className="bg-[#0A0A0A] text-white">
@@ -90,7 +90,12 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                     <section className="relative isolate overflow-hidden max-w-[1504px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 grid lg:grid-cols-2 gap-16 items-center">
                         <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
                             <img src="/hero-photo.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/96 via-[#0A0A0A]/90 to-[#0A0A0A]/55" />
+                            {/* The left-to-right gradient is tuned for desktop's two-column split (dark
+                                behind the text column, lighter behind the phone graphic). On mobile the
+                                grid collapses to one column, so full-width text would cross into that
+                                lighter zone and clash with the image — use a flat, uniformly dark wash
+                                there instead, and only switch to the directional gradient at lg. */}
+                            <div className="absolute inset-0 bg-[#0A0A0A]/90 lg:bg-gradient-to-r lg:from-[#0A0A0A]/96 lg:via-[#0A0A0A]/90 lg:to-[#0A0A0A]/55" />
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-[#0A0A0A]/40" />
                         </div>
 
@@ -102,9 +107,9 @@ export default function Home({ products }: { products: HomeProduct[] }) {
                             </Reveal>
                             <Reveal delay={80}>
                                 <h1 className="text-5xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
-                                    Your Identity.
+                                    Easier
                                     <br />
-                                    In One Tap.
+                                    Connection.
                                 </h1>
                             </Reveal>
                             <Reveal delay={160}>
