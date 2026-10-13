@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Lead;
 use App\Models\Payment;
+use App\Models\Profile;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Carbon\Carbon;
@@ -62,10 +63,10 @@ class AnalyticsController extends Controller
         $newSubsPrior = SubscriptionPayment::where('status', 'success')->whereBetween('created_at', [$priorFrom, $priorTo])->count();
 
         $now = Carbon::now();
-        $proUsers = User::where('plan', '!=', 'free')->get(['plan_expires_at']);
+        $proUsers = Profile::where('plan', '!=', 'free')->get(['plan_expires_at']);
         $paidBusinesses = Business::where('plan', '!=', 'free')->get(['plan', 'plan_expires_at']);
 
-        $activeIndividualPro = $proUsers->filter(fn (User $u) => ! $u->plan_expires_at || $u->plan_expires_at->isFuture())->count();
+        $activeIndividualPro = $proUsers->filter(fn (Profile $p) => ! $p->plan_expires_at || $p->plan_expires_at->isFuture())->count();
         $activeBusinesses = $paidBusinesses->filter(fn (Business $b) => ! $b->plan_expires_at || $b->plan_expires_at->isFuture());
         $activeSubscriptions = $activeIndividualPro + $activeBusinesses->count();
 

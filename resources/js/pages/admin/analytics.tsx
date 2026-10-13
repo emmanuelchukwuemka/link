@@ -182,6 +182,7 @@ const PLAN_BAR_COLORS = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-purp
 function AdminAnalyticsInner() {
     const [data, setData] = useState<Analytics | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [tab, setTab] = useState<Tab>('overview');
     const [from, setFrom] = useState(firstOfMonth());
     const [to, setTo] = useState(lastOfMonth());
@@ -189,10 +190,18 @@ function AdminAnalyticsInner() {
 
     useEffect(() => {
         setLoading(true);
+        setError(false);
         fetch(`/api/admin/analytics?from=${from}&to=${to}`)
-            .then((r) => r.json())
+            .then((r) => {
+                if (!r.ok) throw new Error('Failed to load analytics');
+                return r.json();
+            })
             .then((d) => {
                 setData(d);
+                setLoading(false);
+            })
+            .catch(() => {
+                setError(true);
                 setLoading(false);
             });
     }, [from, to]);
@@ -221,6 +230,7 @@ function AdminAnalyticsInner() {
         URL.revokeObjectURL(url);
     };
 
+    if (error) return <div className="text-center py-20 text-red-600">Couldn't load analytics. Please try again.</div>;
     if (loading || !data) return <div className="text-center py-20 text-black">Loading...</div>;
 
     const statCards = [
