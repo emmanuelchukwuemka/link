@@ -26,16 +26,6 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
-
-    Route::post('otp/request-login', [OtpController::class, 'requestLogin'])
-        ->middleware('throttle:6,1')
-        ->name('otp.request-login');
-
-    Route::post('otp/verify-login', [OtpController::class, 'verifyLogin'])
-        ->middleware('throttle:10,1')
-        ->name('otp.verify-login');
-
     Route::post('otp/request-register', [OtpController::class, 'requestRegister'])
         ->middleware('throttle:6,1')
         ->name('otp.request-register');
@@ -62,6 +52,24 @@ Route::middleware('guest')->group(function () {
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
 });
+
+// Deliberately NOT behind 'guest': if a stale/unrelated session is already
+// active (e.g. a lingering tab, or admin-login visited while still logged
+// in as a regular account), the 'guest' middleware silently redirects these
+// POSTs to /dashboard before the credentials are ever checked — fetch()
+// follows that redirect transparently, so the caller sees a 200 with no
+// user data and misreads it as "authenticated but wrong role". Submitting
+// login credentials should always re-authenticate as that account and swap
+// the session, regardless of who (if anyone) was previously logged in.
+Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+Route::post('otp/request-login', [OtpController::class, 'requestLogin'])
+    ->middleware('throttle:6,1')
+    ->name('otp.request-login');
+
+Route::post('otp/verify-login', [OtpController::class, 'verifyLogin'])
+    ->middleware('throttle:10,1')
+    ->name('otp.verify-login');
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
