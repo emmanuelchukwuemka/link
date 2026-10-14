@@ -12,9 +12,9 @@ return [
 
     'free_link_limit' => 5,
 
-    // How many public profiles one account can own.
+    // How many public profiles one account can own. null = unlimited.
     'free_profile_limit' => 3,
-    'pro_profile_limit' => 5,
+    'pro_profile_limit' => null,
 
     'free_template' => 'minimal',
 

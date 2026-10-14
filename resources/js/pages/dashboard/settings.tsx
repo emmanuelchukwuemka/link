@@ -1,7 +1,57 @@
 import { useState, useEffect } from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { apiFetch } from '@/lib/api';
+
+function DeleteAccountModal({ onClose }: { onClose: () => void }) {
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [deleting, setDeleting] = useState(false);
+
+    const handleDelete = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setDeleting(true);
+        setError('');
+        const { ok, data } = await apiFetch('/api/profile/account', { password }, 'DELETE');
+        if (!ok) {
+            setError((data.error as string) || 'Could not delete your account.');
+            setDeleting(false);
+            return;
+        }
+        router.visit('/');
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-3xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-lg font-bold mb-1 text-red-600">Delete your account?</h2>
+                <p className="text-sm text-black mb-4">This permanently deletes your profile(s), links, cards, orders and all other data. This cannot be undone.</p>
+                <form onSubmit={handleDelete} className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-black mb-1">Confirm your password</label>
+                        <input
+                            autoFocus
+                            required
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black"
+                        />
+                    </div>
+                    {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>}
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 bg-gray-100 text-black py-2.5 rounded-full font-semibold text-sm hover:bg-gray-200">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={deleting} className="flex-1 bg-red-600 text-white py-2.5 rounded-full font-semibold text-sm hover:bg-red-700 disabled:opacity-60">
+                            {deleting ? 'Deleting...' : 'Delete Account'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
 
 function SettingsInner() {
     const [profile, setProfile] = useState({
@@ -17,6 +67,7 @@ function SettingsInner() {
         businessHours: '',
         leadFormEnabled: false,
     });
+    const [showDelete, setShowDelete] = useState(false);
 
     useEffect(() => {
         fetch('/api/auth/me')
@@ -166,8 +217,12 @@ function SettingsInner() {
                 <h2 className="text-xl font-bold text-red-600 mb-1">Danger Zone</h2>
                 <p className="text-black text-sm mb-4">Permanently delete your account and all data.</p>
 
-                <button className="bg-red-50 text-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-red-100 transition-colors">Delete Account</button>
+                <button onClick={() => setShowDelete(true)} className="bg-red-50 text-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-red-100 transition-colors">
+                    Delete Account
+                </button>
             </div>
+
+            {showDelete && <DeleteAccountModal onClose={() => setShowDelete(false)} />}
         </div>
     );
 }

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProfileController extends Controller
 {
@@ -101,9 +103,9 @@ class ProfileController extends Controller
         $existing = $user->profiles();
         $limit = $existing->clone()->where('plan', '!=', 'free')->exists()
             ? config('plans.pro_profile_limit', 5)
-            : config('plans.free_profile_limit', 1);
+            : config('plans.free_profile_limit', 3);
 
-        if ($existing->count() >= $limit) {
+        if ($limit !== null && $existing->count() >= $limit) {
             return response()->json(['error' => "You've reached the limit of {$limit} profile(s) for your plan."], 403);
         }
 
@@ -133,6 +135,37 @@ class ProfileController extends Controller
         }
 
         session(['active_profile_id' => $profile->id]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Permanently deletes the account. Cascades clean up every profile and
+     * its content (links, cards, orders, etc. all reference users.id with
+     * cascadeOnDelete) — except businesses.owner_id, which is deliberately
+     * restrictOnDelete so a business can't be left ownerless, so that case
+     * is rejected here with a clear message instead of a raw 500.
+     */
+    public function destroyAccount(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        if (Business::where('owner_id', $user->id)->exists()) {
+            return response()->json([
+                'error' => 'You own a business account. Transfer or delete the business first before deleting your account.',
+            ], 409);
+        }
+
+        Auth::logout();
+
+        $user->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json(['ok' => true]);
     }
