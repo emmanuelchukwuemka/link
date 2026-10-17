@@ -11,6 +11,14 @@ export const SOCIAL_URL_TEMPLATES: Record<string, (username: string) => string> 
     YouTube: (u) => `https://youtube.com/@${u}`,
     Snapchat: (u) => `https://snapchat.com/add/${u}`,
     Threads: (u) => `https://threads.net/@${u}`,
+    // wa.me needs digits only (country code, no +/spaces/leading 0) - a phone
+    // number, not a username. Locally-formatted Nigerian numbers ("0801...")
+    // are the expected common input, so swap the leading 0 for the country
+    // code rather than leaving a broken link for the most likely input.
+    WhatsApp: (u) => {
+        const digits = u.replace(/\D/g, '');
+        return `https://wa.me/${digits.startsWith('0') ? `234${digits.slice(1)}` : digits}`;
+    },
 };
 
 export function buildSocialUrl(platform: string, input: string): string {

@@ -10,7 +10,7 @@ import { ProfileHeader } from '@/components/dashboard/profile-header';
 import { StoreProductsPanel } from '@/components/dashboard/store-products-panel';
 import { LinkEditorModal, type LinkType } from '@/components/dashboard/link-editor-modal';
 import { SocialLinkModal, SOCIAL_PLATFORMS, type SocialLinkType } from '@/components/dashboard/social-link-modal';
-import { InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon, LinkedInIcon, SnapchatIcon, ThreadsIcon } from '@/components/brand-icons';
+import { InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon, LinkedInIcon, SnapchatIcon, ThreadsIcon, WhatsAppIcon } from '@/components/brand-icons';
 import { Globe } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
@@ -19,6 +19,7 @@ const FREE_LINK_LIMIT = 5;
 const PLATFORM_ICONS: Record<string, (props: { width?: number; height?: number; className?: string }) => React.ReactNode> = {
     Instagram: InstagramIcon,
     TikTok: TikTokIcon,
+    WhatsApp: WhatsAppIcon,
     Facebook: FacebookIcon,
     LinkedIn: LinkedInIcon,
     X: XIcon,

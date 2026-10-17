@@ -10,7 +10,7 @@ import {
     ProfileTopBar,
     FloatingClaimBar,
 } from '@/components/profile-interactive';
-import { InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon, LinkedInIcon, SnapchatIcon, ThreadsIcon } from '@/components/brand-icons';
+import { InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon, LinkedInIcon, SnapchatIcon, ThreadsIcon, WhatsAppIcon } from '@/components/brand-icons';
 import { backgroundStyle } from '@/lib/profile/background';
 import { profileFontFamily } from '@/lib/profile/profileFonts';
 import { getLinkIcon } from '@/lib/profile/linkIcons';
@@ -21,6 +21,7 @@ import { ImageWithFallback } from '@/components/image-with-fallback';
 const SOCIAL_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     Instagram: InstagramIcon,
     TikTok: TikTokIcon,
+    WhatsApp: WhatsAppIcon,
     Facebook: FacebookIcon,
     LinkedIn: LinkedInIcon,
     X: XIcon,

@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { X, Globe } from 'lucide-react';
-import { InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon, LinkedInIcon, SnapchatIcon, ThreadsIcon } from '@/components/brand-icons';
+import { InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, XIcon, LinkedInIcon, SnapchatIcon, ThreadsIcon, WhatsAppIcon } from '@/components/brand-icons';
 import { buildSocialUrl } from '@/lib/profile/socialUrl';
 import { apiFetch } from '@/lib/api';
 
-export const SOCIAL_PLATFORMS = ['Instagram', 'TikTok', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'Snapchat', 'Threads', 'Website'];
+export const SOCIAL_PLATFORMS = ['Instagram', 'TikTok', 'WhatsApp', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'Snapchat', 'Threads', 'Website'];
 
 const PLATFORM_ICONS: Record<string, (props: { width?: number; height?: number; className?: string }) => React.ReactNode> = {
     Instagram: InstagramIcon,
     TikTok: TikTokIcon,
+    WhatsApp: WhatsAppIcon,
     Facebook: FacebookIcon,
     LinkedIn: LinkedInIcon,
     X: XIcon,
@@ -97,13 +98,13 @@ export function SocialLinkModal({
                     })}
                 </div>
 
-                <label className="block text-sm font-semibold mb-1.5">{platform === 'Website' ? 'Website URL' : `Username or ${platform} profile link`}</label>
+                <label className="block text-sm font-semibold mb-1.5">{platform === 'Website' ? 'Website URL' : platform === 'WhatsApp' ? 'WhatsApp number (with country code)' : `Username or ${platform} profile link`}</label>
                 <input
                     type="text"
                     autoFocus
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={platform === 'Website' ? 'https://yoursite.com' : '@yourusername'}
+                    placeholder={platform === 'Website' ? 'https://yoursite.com' : platform === 'WhatsApp' ? '+234 801 234 5678' : '@yourusername'}
                     className="w-full px-4 py-3 rounded-lg bg-gray-100 border-transparent focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 outline-none transition-all"
                 />
                 {input.trim() && <p className="text-xs text-gray-500 mt-2 truncate">Will link to: {resolvedUrl}</p>}
