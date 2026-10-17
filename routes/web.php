@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PortfolioItemController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ProfileTransferController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SupportMessageController;
 use App\Http\Controllers\Api\SocialLinkController;
@@ -137,6 +138,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api/profiles', [ProfileController::class, 'mine']);
     Route::post('api/profiles', [ProfileController::class, 'store']);
     Route::post('api/profiles/switch', [ProfileController::class, 'switch']);
+
+    Route::post('api/profile-transfers', [ProfileTransferController::class, 'store']);
+    Route::get('api/profile-transfers/outgoing', [ProfileTransferController::class, 'outgoing']);
+    Route::get('api/profile-transfers/incoming', [ProfileTransferController::class, 'incoming']);
+    Route::post('api/profile-transfers/{transfer}/accept', [ProfileTransferController::class, 'accept']);
+    Route::post('api/profile-transfers/{transfer}/decline', [ProfileTransferController::class, 'decline']);
+    Route::post('api/profile-transfers/{transfer}/cancel', [ProfileTransferController::class, 'cancel']);
 
     Route::get('api/services', [ServiceController::class, 'index']);
     Route::post('api/services', [ServiceController::class, 'store']);

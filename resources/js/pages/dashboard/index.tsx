@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ProfileHeader } from '@/components/dashboard/profile-header';
+import { IncomingTransfers } from '@/components/dashboard/incoming-transfers';
 import { ImageWithFallback } from '@/components/image-with-fallback';
 
 type Me = {
@@ -173,6 +174,8 @@ function DashboardOverviewInner() {
 
     return (
         <div className="space-y-6">
+            <IncomingTransfers />
+
             <ProfileHeader username={me.username} displayName={me.name} bio={me.bio} avatarUrl={me.avatar_url} showQuickActions />
 
             {/* Welcome banner */}
