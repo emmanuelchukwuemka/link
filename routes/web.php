@@ -444,6 +444,7 @@ Route::middleware(['auth'])->prefix('api/admin')->group(function () {
         Route::get('users', [AdminUserController::class, 'index']);
         Route::post('users', [AdminUserController::class, 'store']);
         Route::patch('users/{user}', [AdminUserController::class, 'update']);
+        Route::delete('users/{user}', [AdminUserController::class, 'destroy']);
         Route::post('users/{user}/impersonate', [ImpersonateController::class, 'start']);
     });
 

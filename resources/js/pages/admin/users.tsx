@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { Users, Ban, CheckCircle2, Wand2 } from 'lucide-react';
+import { Users, Ban, CheckCircle2, Wand2, Trash2 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 import { apiFetch } from '@/lib/api';
 
@@ -71,6 +71,21 @@ function AdminUsersInner() {
         }
     };
 
+    const deleteUser = async (u: UserRow) => {
+        if (!window.confirm(`Permanently delete @${u.username} (${u.email})? This deletes their profile(s), links, cards, orders and all other data. This cannot be undone.`)) return;
+        setBusyId(u.id);
+        try {
+            const { ok, data } = await apiFetch(`/api/admin/users/${u.id}`, {}, 'DELETE');
+            if (!ok) {
+                alert((data.error as string) || 'Could not delete this account');
+                return;
+            }
+            setUsers((prev) => prev.filter((x) => x.id !== u.id));
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     if (loading) return <div className="text-center py-20 text-black">Loading...</div>;
 
     return (
@@ -132,6 +147,14 @@ function AdminUsersInner() {
                                                     <CheckCircle2 size={13} /> Reactivate
                                                 </>
                                             )}
+                                        </button>
+                                        <button
+                                            onClick={() => deleteUser(u)}
+                                            disabled={busyId === u.id}
+                                            title="Permanently delete this account"
+                                            className="p-1.5 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                        >
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
                                 </td>

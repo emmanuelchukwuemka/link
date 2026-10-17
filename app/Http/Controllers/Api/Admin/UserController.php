@@ -111,4 +111,31 @@ class UserController extends Controller
 
         return response()->json(['user' => ['id' => $user->id, 'isActive' => $user->is_active]]);
     }
+
+    /**
+     * Permanently deletes the account. Cascades clean up every profile and
+     * its content (users.id -> profiles.user_id -> links/cards/etc. all
+     * cascadeOnDelete), except businesses.owner_id, which is deliberately
+     * restrictOnDelete so a business can't be left ownerless - that case is
+     * rejected here with a clear message instead of a raw 500, mirroring
+     * the self-service account deletion flow.
+     */
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        if ($user->id === $request->user()->id) {
+            return response()->json(['error' => 'You cannot delete your own account here.'], 400);
+        }
+
+        if ($user->account_type === 'admin' && User::where('account_type', 'admin')->count() <= 1) {
+            return response()->json(['error' => 'Cannot delete the only remaining admin account.'], 400);
+        }
+
+        if (Business::where('owner_id', $user->id)->exists()) {
+            return response()->json(['error' => 'This account owns a business. Transfer or delete the business first before deleting the account.'], 409);
+        }
+
+        $user->delete();
+
+        return response()->json(['ok' => true]);
+    }
 }
