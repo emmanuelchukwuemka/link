@@ -15,7 +15,7 @@ export function ShopSearchForm() {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex-1 max-w-2xl mx-auto">
+        <form onSubmit={handleSubmit} className="flex-1 min-w-0 max-w-2xl mx-auto">
             <div className="flex w-full items-center rounded-full bg-white shadow-xs ring-1 ring-inset ring-black/5 focus-within:ring-2 focus-within:ring-white/40 transition-all">
                 <div className="pl-4 pr-2 flex items-center justify-center text-[#66635F]">
                     <Search size={16} />
