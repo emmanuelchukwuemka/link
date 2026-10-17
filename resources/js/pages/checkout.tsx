@@ -44,9 +44,9 @@ export default function CheckoutPage() {
     }, []);
 
     const subtotal = cartTotal(items);
-    const zone = zones.find((z) => z.name.toLowerCase() === form.city.trim().toLowerCase());
-    const deliveryFee = zone?.fee ?? zones.find((z) => z.name === 'Other')?.fee ?? 0;
-    const total = subtotal + deliveryFee;
+    // Delivery fees are suspended for now - re-enable the zone-based lookup
+    // here (and the "Delivery" line below) when they come back.
+    const total = subtotal;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -170,7 +170,7 @@ export default function CheckoutPage() {
                         ))}
                         <div className="border-t border-[#D4D0C9] pt-3 flex justify-between text-sm">
                             <span className="text-[#66635F]">Delivery</span>
-                            <span className="font-medium">&#8358;{deliveryFee.toLocaleString()}</span>
+                            <span className="font-medium text-green-600">Free</span>
                         </div>
                         <div className="flex justify-between font-bold text-lg pt-2 border-t border-[#D4D0C9]">
                             <span>Total</span>

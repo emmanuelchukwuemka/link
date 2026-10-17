@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -67,8 +66,9 @@ class OrderController extends Controller
             ];
         }
 
-        $zone = DeliveryZone::where('name', $city)->first() ?? DeliveryZone::where('name', 'Other')->first();
-        $deliveryFee = $zone ? (float) $zone->fee : ($subtotal >= 30000 ? 0 : 3500);
+        // Delivery fees are suspended for now — re-enable the DeliveryZone
+        // lookup here when they come back.
+        $deliveryFee = 0;
         $total = $subtotal + $deliveryFee;
         $orderNumber = OrderNumberGenerator::generate();
 
