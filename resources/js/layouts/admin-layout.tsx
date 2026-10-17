@@ -7,8 +7,8 @@ import { LayoutDashboard, Package, ClipboardList, CreditCard, Truck, Users, User
 
 type AdminUser = {
     username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
+    name: string | null;
+    avatar_url: string | null;
     accountType: string;
     permissions: string[];
 };
@@ -233,10 +233,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <div className="relative">
                                 <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-full bg-black overflow-hidden flex items-center justify-center text-sm font-bold text-white shrink-0">
-                                        <ImageWithFallback src={me?.avatarUrl} alt="" className="w-full h-full object-cover" fallback={(me?.displayName || me?.username || 'A').charAt(0).toUpperCase()} />
+                                        <ImageWithFallback src={me?.avatar_url} alt="" className="w-full h-full object-cover" fallback={(me?.name || me?.username || 'A').charAt(0).toUpperCase()} />
                                     </div>
                                     <div className="hidden sm:block text-left">
-                                        <p className="text-sm font-semibold leading-tight text-black">{me?.displayName || me?.username || 'Admin'}</p>
+                                        <p className="text-sm font-semibold leading-tight text-black">{me?.name || me?.username || 'Admin'}</p>
                                         <p className="text-xs text-gray-600 leading-tight">{isStaff ? 'Staff' : 'Platform Administrator'}</p>
                                     </div>
                                     <ChevronDown size={16} className="text-gray-400 hidden sm:block" />

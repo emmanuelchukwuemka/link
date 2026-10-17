@@ -4,7 +4,7 @@ import { Users, Building2, UserPlus, ShoppingCart, CreditCard, Wallet, TrendingU
 import AdminLayout from '@/layouts/admin-layout';
 import { apiFetch } from '@/lib/api';
 
-type Me = { username: string; displayName: string | null };
+type Me = { username: string; name: string | null };
 
 type Stat = { value: number; change: number; series: number[] };
 
@@ -414,7 +414,7 @@ function AdminDashboardInner() {
             <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p className="text-gray-700 mb-1">Welcome back,</p>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-1">{me?.displayName || me?.username || 'Admin'} 👋</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-1">{me?.name || me?.username || 'Admin'} 👋</h1>
                     <p className="text-gray-700 text-sm">Here&apos;s what&apos;s happening on TapConnect today.</p>
                 </div>
                 <div className="flex items-center gap-3">
