@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ClipboardList, Search, X, Eye, Download, Clock, Package, Truck, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ClipboardList, Search, X, Eye, Download, Clock, Package, Truck, CheckCircle2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 import { apiFetch } from '@/lib/api';
 
@@ -92,7 +92,7 @@ function downloadCsv(csv: string, filename: string) {
     URL.revokeObjectURL(url);
 }
 
-function OrderDetailModal({ order, onClose, onSaved }: { order: Order; onClose: () => void; onSaved: (o: Order) => void }) {
+function OrderDetailModal({ order, onClose, onSaved, onDelete }: { order: Order; onClose: () => void; onSaved: (o: Order) => void; onDelete: (id: number) => void }) {
     const [status, setStatus] = useState(order.status);
     const [courierName, setCourierName] = useState(order.courier_name || '');
     const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '');
@@ -219,6 +219,9 @@ function OrderDetailModal({ order, onClose, onSaved }: { order: Order; onClose: 
                     </div>
 
                     <div className="flex gap-3 pt-2">
+                        <button onClick={() => onDelete(order.id)} className="flex items-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-sm bg-red-50 text-red-600 hover:bg-red-100">
+                            <Trash2 size={14} /> Delete
+                        </button>
                         <div className="flex-1" />
                         <button onClick={onClose} className="px-5 py-2.5 rounded-full font-semibold text-sm bg-gray-100 text-black hover:bg-gray-200">
                             Cancel
@@ -241,6 +244,7 @@ function AdminOrdersInner() {
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         fetch('/api/admin/orders')
@@ -301,6 +305,23 @@ function AdminOrdersInner() {
         downloadCsv(toCsv(toExport), `orders-${new Date().toISOString().slice(0, 10)}.csv`);
     };
 
+    const deleteOrders = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        const label = ids.length === 1 ? 'this order' : `these ${ids.length} orders`;
+        if (!window.confirm(`Permanently delete ${label}? This cannot be undone.`)) return;
+        setDeleting(true);
+        const { ok } = await apiFetch('/api/admin/orders', { ids }, 'DELETE');
+        setDeleting(false);
+        if (!ok) return;
+        setOrders((prev) => prev.filter((o) => !ids.includes(o.id)));
+        setSelected((s) => {
+            const next = new Set(s);
+            ids.forEach((id) => next.delete(id));
+            return next;
+        });
+        if (activeOrder && ids.includes(activeOrder.id)) setActiveOrder(null);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-wrap justify-between items-start gap-3">
@@ -353,9 +374,18 @@ function AdminOrdersInner() {
             {selected.size > 0 && (
                 <div className="bg-black rounded-2xl px-5 py-3 flex items-center justify-between gap-3">
                     <span className="text-white text-sm font-semibold">{selected.size} selected</span>
-                    <button onClick={() => setSelected(new Set())} className="text-white/70 hover:text-white text-sm font-semibold px-3 py-1.5">
-                        Clear
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => deleteOrders(Array.from(selected))}
+                            disabled={deleting}
+                            className="flex items-center gap-1.5 text-red-400 hover:text-red-300 text-sm font-semibold px-3 py-1.5 disabled:opacity-50"
+                        >
+                            <Trash2 size={14} /> Delete
+                        </button>
+                        <button onClick={() => setSelected(new Set())} className="text-white/70 hover:text-white text-sm font-semibold px-3 py-1.5">
+                            Clear
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -406,9 +436,19 @@ function AdminOrdersInner() {
                                         </td>
                                         <td className="p-4 text-xs text-gray-600 whitespace-nowrap">{new Date(o.created_at).toLocaleDateString()}</td>
                                         <td className="p-4">
-                                            <button onClick={() => setActiveOrder(o)} className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-200 text-black hover:bg-gray-50 flex items-center gap-1.5 whitespace-nowrap">
-                                                <Eye size={12} /> View
-                                            </button>
+                                            <div className="flex items-center gap-1.5">
+                                                <button onClick={() => setActiveOrder(o)} className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-200 text-black hover:bg-gray-50 flex items-center gap-1.5 whitespace-nowrap">
+                                                    <Eye size={12} /> View
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteOrders([o.id])}
+                                                    disabled={deleting}
+                                                    title="Delete order"
+                                                    className="p-1.5 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -437,7 +477,14 @@ function AdminOrdersInner() {
                 </div>
             )}
 
-            {activeOrder && <OrderDetailModal order={activeOrder} onClose={() => setActiveOrder(null)} onSaved={(updated) => setOrders(orders.map((o) => (o.id === updated.id ? updated : o)))} />}
+            {activeOrder && (
+                <OrderDetailModal
+                    order={activeOrder}
+                    onClose={() => setActiveOrder(null)}
+                    onSaved={(updated) => setOrders(orders.map((o) => (o.id === updated.id ? updated : o)))}
+                    onDelete={(id) => deleteOrders([id])}
+                />
+            )}
         </div>
     );
 }

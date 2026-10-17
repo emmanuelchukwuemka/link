@@ -450,6 +450,7 @@ Route::middleware(['auth'])->prefix('api/admin')->group(function () {
     Route::middleware('permission_api:process_orders')->group(function () {
         Route::get('orders', [AdminOrderController::class, 'index']);
         Route::patch('orders/{orderNumber}', [AdminOrderController::class, 'update']);
+        Route::delete('orders', [AdminOrderController::class, 'destroy']);
     });
 });
 

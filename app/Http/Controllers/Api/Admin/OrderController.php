@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Services\NotifyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -73,5 +75,31 @@ class OrderController extends Controller
         }
 
         return response()->json(['order' => $order->fresh()]);
+    }
+
+    /**
+     * Bulk (or single, via a 1-item array) permanent delete. payments.order_id
+     * is restrictOnDelete, so those rows have to go first; order_items cascades
+     * on its own. cards.order_id has no FK constraint at all (by design, matching
+     * the old schema), so a claimed card just keeps a now-dangling order_id -
+     * harmless, nothing reads through that reference.
+     */
+    public function destroy(Request $request): JsonResponse
+    {
+        $ids = $request->input('ids', []);
+        if (! is_array($ids) || empty($ids)) {
+            return response()->json(['error' => 'No orders selected'], 400);
+        }
+
+        $orders = Order::whereIn('id', $ids)->get();
+
+        DB::transaction(function () use ($orders) {
+            foreach ($orders as $order) {
+                Payment::where('order_id', $order->id)->delete();
+                $order->delete();
+            }
+        });
+
+        return response()->json(['deleted' => $orders->count()]);
     }
 }
