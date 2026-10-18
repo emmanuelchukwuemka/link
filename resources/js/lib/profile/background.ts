@@ -29,6 +29,36 @@ export function gradientsFromColor(bgColor: string): string[] {
     ];
 }
 
+function rosette(cx: number, cy: number, scale: number, rotate: number): string {
+    return `<g transform="translate(${cx},${cy}) rotate(${rotate}) scale(${scale})">
+        <ellipse cx="0" cy="-10" rx="7" ry="5" fill="#3b2414"/>
+        <ellipse cx="9" cy="-3" rx="6" ry="5" fill="#3b2414"/>
+        <ellipse cx="6" cy="8" rx="7" ry="5" fill="#3b2414"/>
+        <ellipse cx="-6" cy="7" rx="6" ry="5" fill="#3b2414"/>
+        <ellipse cx="-9" cy="-4" rx="6" ry="5" fill="#3b2414"/>
+    </g>`;
+}
+
+const LEOPARD_PRINT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">${[
+    rosette(30, 30, 1, 10),
+    rosette(110, 20, 1.3, -15),
+    rosette(190, 60, 0.9, 25),
+    rosette(60, 100, 1.1, -5),
+    rosette(150, 120, 1.4, 40),
+    rosette(20, 180, 1, -20),
+    rosette(100, 190, 1.2, 15),
+    rosette(195, 195, 0.8, -30),
+].join('')}</svg>`;
+
+export function leopardPrintStyle(): CSSProperties {
+    return {
+        backgroundColor: '#D9B382',
+        backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(LEOPARD_PRINT_SVG)}")`,
+        backgroundSize: '220px 220px',
+        backgroundRepeat: 'repeat',
+    };
+}
+
 export function backgroundStyle(profile: { bgType: string; bgColor: string; bgGradient?: string | null; bgImage?: string | null }): CSSProperties {
     if (profile.bgType === 'gradient' && profile.bgGradient) {
         return { background: profile.bgGradient };
@@ -39,6 +69,9 @@ export function backgroundStyle(profile: { bgType: string; bgColor: string; bgGr
             backgroundSize: 'cover',
             backgroundPosition: 'center',
         };
+    }
+    if (profile.bgType === 'pattern') {
+        return leopardPrintStyle();
     }
     return { backgroundColor: profile.bgColor };
 }

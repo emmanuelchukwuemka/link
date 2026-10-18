@@ -4,11 +4,20 @@ import { Crown, Wallet, Check, Loader2, AlertCircle, Link2 } from 'lucide-react'
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ImageUploader } from '@/components/image-uploader';
 import { ImageWithFallback } from '@/components/image-with-fallback';
-import { backgroundStyle, gradientsFromColor } from '@/lib/profile/background';
+import { backgroundStyle, gradientsFromColor, leopardPrintStyle } from '@/lib/profile/background';
 import { buttonSizePadding, buttonSizeFontClass } from '@/lib/profile/buttonSize';
 import { SaveContactButton } from '@/components/profile-interactive';
 import { profileFontFamily } from '@/lib/profile/profileFonts';
+import { getTemplate } from '@/lib/profile/templates';
+import { getLinkIcon } from '@/lib/profile/linkIcons';
 import { apiFetch } from '@/lib/api';
+
+type PreviewLink = { id: number; title: string; icon_name: string | null; thumbnail: string | null; is_active: boolean };
+
+const FALLBACK_PREVIEW_LINKS: PreviewLink[] = [
+    { id: -1, title: 'Sample Link 1', icon_name: null, thumbnail: null, is_active: true },
+    { id: -2, title: 'Sample Link 2', icon_name: null, thumbnail: null, is_active: true },
+];
 
 const FREE_FONTS = ['Inter', 'Georgia', 'Poppins', 'Roboto Mono'];
 
@@ -63,6 +72,14 @@ function AppearanceInner() {
     const [isPro, setIsPro] = useState(false);
     const [upgradeNotice, setUpgradeNotice] = useState('');
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [links, setLinks] = useState<PreviewLink[]>([]);
+
+    useEffect(() => {
+        fetch('/api/links')
+            .then((res) => res.json())
+            .then((data) => setLinks(data.links || []))
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         fetch('/api/auth/me')
@@ -125,6 +142,10 @@ function AppearanceInner() {
     };
 
     if (loading) return <div className="py-20 text-center text-black">Loading...</div>;
+
+    const previewTemplate = getTemplate(profile.template);
+    const activeLinks = links.filter((l) => l.is_active);
+    const previewLinks = activeLinks.length > 0 ? activeLinks : FALLBACK_PREVIEW_LINKS;
 
     return (
         <div className="grid md:grid-cols-[1fr_400px] gap-8 items-start">
@@ -369,20 +390,26 @@ function AppearanceInner() {
 
                         <div>
                             <h3 className="font-semibold mb-3">Background</h3>
-                            <div className="grid grid-cols-3 gap-2 mb-4">
-                                {(['solid', 'gradient', 'image'] as const).map((t) => (
+                            <div className="grid grid-cols-4 gap-2 mb-4">
+                                {(['solid', 'gradient', 'pattern', 'image'] as const).map((t) => (
                                     <button
                                         key={t}
-                                        onClick={() =>
+                                        onClick={() => {
+                                            if (t === 'image') {
+                                                handleProUpdate({ bgType: t }, 'Custom background images are a Pro feature.');
+                                                return;
+                                            }
+                                            setUpgradeNotice('');
                                             handleUpdate(
                                                 t === 'gradient' && !gradientsFromColor(profile.bgColor).includes(profile.bgGradient)
                                                     ? { bgType: t, bgGradient: gradientsFromColor(profile.bgColor)[0] }
                                                     : { bgType: t },
-                                            )
-                                        }
+                                            );
+                                        }}
                                         className={`relative py-2 rounded-lg border-2 capitalize text-sm font-medium ${profile.bgType === t ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`}
                                     >
                                         {t}
+                                        {t === 'image' && !isPro ? ' 🔒' : ''}
                                     </button>
                                 ))}
                             </div>
@@ -407,15 +434,33 @@ function AppearanceInner() {
                                 </div>
                             )}
 
-                            {profile.bgType === 'image' && (
-                                <div className="space-y-3">
-                                    {profile.bgImage && <img src={profile.bgImage} alt="Background preview" className="w-full h-32 rounded-lg object-cover" />}
-                                    <ImageUploader
-                                        label="Upload background image"
-                                        onUploaded={(url) => handleUpdate({ bgImage: url })}
-                                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold text-sm hover:bg-gray-200 flex items-center gap-2"
-                                    />
+                            {profile.bgType === 'pattern' && (
+                                <div className="flex items-center gap-3">
+                                    <div className="w-14 h-14 rounded-lg border-2 border-black" style={leopardPrintStyle()} />
+                                    <span className="text-sm text-gray-600">Leopard print</span>
                                 </div>
+                            )}
+
+                            {profile.bgType === 'image' && (
+                                isPro ? (
+                                    <div className="space-y-3">
+                                        {profile.bgImage && <img src={profile.bgImage} alt="Background preview" className="w-full h-32 rounded-lg object-cover" />}
+                                        <ImageUploader
+                                            label="Upload background image"
+                                            onUploaded={(url) => handleUpdate({ bgImage: url })}
+                                            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold text-sm hover:bg-gray-200 flex items-center gap-2"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                        <p className="text-sm text-amber-800 flex items-center gap-2">
+                                            <Crown size={16} /> Custom background images are a Pro feature.
+                                        </p>
+                                        <Link href="/dashboard/subscription" className="text-sm font-semibold bg-amber-600 text-white px-4 py-2 rounded-full whitespace-nowrap hover:bg-amber-700">
+                                            Upgrade
+                                        </Link>
+                                    </div>
+                                )
                             )}
                         </div>
 
@@ -511,29 +556,33 @@ function AppearanceInner() {
                     }}
                 >
                     {profile.showAvatar && (
-                        <div className="w-24 h-24 bg-gray-300 rounded-full mb-2 flex items-center justify-center text-3xl font-bold text-black overflow-hidden">
-                            {profile.displayName?.charAt(0) || profile.username?.charAt(0) || 'U'}
+                        <div className={`w-24 h-24 bg-gray-300 mb-2 flex items-center justify-center text-3xl font-bold text-black overflow-hidden ${previewTemplate.avatarShape} ${previewTemplate.avatarRing}`}>
+                            <ImageWithFallback src={profile.avatarUrl} alt="" className="w-full h-full object-cover" fallback={profile.displayName?.charAt(0) || profile.username?.charAt(0) || 'U'} />
                         </div>
                     )}
                     <h2 className="font-extrabold text-xl">{profile.displayName || `@${profile.username}`}</h2>
                     {profile.bio && <p className="text-center text-sm font-bold uppercase opacity-90">{profile.bio}</p>}
 
                     <div className="w-full mt-4 space-y-4">
-                        {['Sample Link 1', 'Sample Link 2'].map((label) => (
-                            <div
-                                key={label}
-                                className={`w-full text-center font-semibold transition-transform ${buttonSizeFontClass(profile.buttonSize)}`}
-                                style={{
-                                    backgroundColor: profile.buttonStyle === 'outline' ? 'transparent' : profile.buttonColor,
-                                    color: profile.buttonStyle === 'outline' ? profile.buttonColor : profile.buttonTextColor,
-                                    border: profile.buttonStyle === 'outline' ? `2px solid ${profile.buttonColor}` : 'none',
-                                    borderRadius: profile.buttonStyle === 'rounded' || profile.buttonStyle === 'outline' ? '9999px' : profile.buttonStyle === 'square' ? '0.5rem' : '0',
-                                    padding: buttonSizePadding(profile.buttonSize),
-                                }}
-                            >
-                                {label}
-                            </div>
-                        ))}
+                        {previewLinks.map((link) => {
+                            const Icon = getLinkIcon(link.icon_name);
+                            return (
+                                <div
+                                    key={link.id}
+                                    className={`flex items-center gap-3 w-full transition-transform ${buttonSizeFontClass(profile.buttonSize)}`}
+                                    style={{
+                                        backgroundColor: profile.buttonStyle === 'outline' ? 'transparent' : profile.buttonColor,
+                                        color: profile.buttonStyle === 'outline' ? profile.buttonColor : profile.buttonTextColor,
+                                        border: profile.buttonStyle === 'outline' ? `2px solid ${profile.buttonColor}` : 'none',
+                                        borderRadius: profile.buttonStyle === 'rounded' || profile.buttonStyle === 'outline' ? '9999px' : profile.buttonStyle === 'square' ? '0.5rem' : '0',
+                                        padding: buttonSizePadding(profile.buttonSize),
+                                    }}
+                                >
+                                    <ImageWithFallback src={link.thumbnail} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" fallback={<Icon size={16} className="shrink-0 opacity-70" />} />
+                                    <span className="flex-1 text-center font-medium truncate">{link.title || 'Untitled Link'}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

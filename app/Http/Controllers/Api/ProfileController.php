@@ -55,8 +55,11 @@ class ProfileController extends Controller
             }
         }
 
+        $settingImageBackground = (($updateData['bg_type'] ?? null) === 'image') || array_key_exists('bg_image', $updateData);
+
         $needsProCheck = ($updateData['lead_form_enabled'] ?? null) === true
-            || (array_key_exists('font_family', $updateData) && ! in_array($updateData['font_family'], config('plans.free_fonts'), true));
+            || (array_key_exists('font_family', $updateData) && ! in_array($updateData['font_family'], config('plans.free_fonts'), true))
+            || $settingImageBackground;
 
         if ($needsProCheck && ! $profile->isProActive()) {
             if (($updateData['lead_form_enabled'] ?? null) === true) {
@@ -64,6 +67,9 @@ class ProfileController extends Controller
             }
             if (array_key_exists('font_family', $updateData)) {
                 return response()->json(['error' => 'That font is a Pro feature. Upgrade to unlock more fonts.'], 403);
+            }
+            if ($settingImageBackground) {
+                return response()->json(['error' => 'Custom background images are a Pro feature. Upgrade to use one.'], 403);
             }
         }
 
