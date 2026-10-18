@@ -205,7 +205,9 @@ export function StoreProductCard({
     whatsapp,
     id,
     name,
+    description,
     imageUrl,
+    link,
     price,
     discountPrice,
     availability,
@@ -216,7 +218,9 @@ export function StoreProductCard({
     whatsapp: string | null;
     id: number;
     name: string;
+    description?: string | null;
     imageUrl: string | null;
+    link?: string | null;
     price: number;
     discountPrice: number | null;
     availability: string;
@@ -245,17 +249,26 @@ export function StoreProductCard({
         .map(([k, v]) => `${k}: ${v}`)
         .join(', ');
 
+    const image = imageUrl ? <img src={imageUrl} alt={name} className="w-full h-full object-cover" /> : <ImageIcon size={28} className="opacity-30" />;
+
     return (
         <div className={`overflow-hidden ${cardClassName}`}>
-            <div className="aspect-square bg-black/10 flex items-center justify-center">
-                {imageUrl ? (
-                    <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
-                ) : (
-                    <ImageIcon size={28} className="opacity-30" />
-                )}
-            </div>
+            {link ? (
+                <a
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => track(username, 'PRODUCT_LINK_CLICK', { productId: id })}
+                    className="aspect-square bg-black/10 flex items-center justify-center"
+                >
+                    {image}
+                </a>
+            ) : (
+                <div className="aspect-square bg-black/10 flex items-center justify-center">{image}</div>
+            )}
             <div className="p-3 space-y-1.5">
                 <p className="font-semibold text-sm truncate">{name}</p>
+                {description && <p className="text-xs opacity-70 line-clamp-2">{description}</p>}
                 <p className="text-sm font-bold">
                     &#8358;{finalPrice.toLocaleString()}
                     {discountPrice && <span className="text-xs opacity-50 line-through ml-1">&#8358;{price.toLocaleString()}</span>}

@@ -80,7 +80,9 @@ interface TestimonialData {
 interface StoreProductData {
     id: number;
     name: string;
+    description: string | null;
     image_url: string | null;
+    link: string | null;
     price: number;
     discount_price: number | null;
     availability: string;
@@ -369,7 +371,9 @@ export default function Profile({
                                     whatsapp={user.whatsapp}
                                     id={p.id}
                                     name={p.name}
+                                    description={p.description}
                                     imageUrl={p.image_url}
+                                    link={p.link}
                                     price={p.price}
                                     discountPrice={p.discount_price}
                                     availability={p.availability}

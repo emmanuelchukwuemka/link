@@ -12,6 +12,7 @@ type Product = {
     name: string;
     description: string | null;
     image_url: string | null;
+    link: string | null;
     price: number;
     discount_price: number | null;
     category: string | null;
@@ -77,6 +78,58 @@ function VariantEditor({ variants, onChange }: { variants: string | null; onChan
     );
 }
 
+function AddProductModal({ onClose, onCreated }: { onClose: () => void; onCreated: (p: Product) => void }) {
+    const [name, setName] = useState('');
+    const [price, setPrice] = useState('');
+    const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name.trim()) {
+            setError('Give the product a name.');
+            return;
+        }
+        setSaving(true);
+        setError('');
+        const { ok, data } = await apiFetch('/api/store-products', { name: name.trim(), price: parseFloat(price) || 0 });
+        setSaving(false);
+        if (!ok) {
+            setError((data.error as string) || 'Could not add product');
+            return;
+        }
+        onCreated(data.product as Product);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-3xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-lg font-bold mb-4 text-black">Add product</h2>
+                <form onSubmit={handleSubmit} className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-black mb-1">Product name</label>
+                        <input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-black mb-1">Price (&#8358;)</label>
+                        <input required type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black" />
+                    </div>
+                    <p className="text-xs text-gray-500">You can add a photo, description, link and more after creating it.</p>
+                    {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm">{error}</div>}
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 bg-gray-100 text-black py-2.5 rounded-full font-semibold text-sm hover:bg-gray-200">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={saving} className="flex-1 bg-black text-white py-2.5 rounded-full font-semibold text-sm hover:bg-gray-800 disabled:opacity-60">
+                            {saving ? 'Creating...' : 'Create'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 type Category = { id: number; name: string };
 
 export function StoreProductsPanel({ showTabs = true, showHeading = true }: { showTabs?: boolean; showHeading?: boolean }) {
@@ -85,6 +138,7 @@ export function StoreProductsPanel({ showTabs = true, showHeading = true }: { sh
     const [categories, setCategories] = useState<Category[]>([]);
     const [isPro, setIsPro] = useState(false);
     const [error, setError] = useState('');
+    const [showAddModal, setShowAddModal] = useState(false);
 
     const load = async () => {
         const res = await fetch('/api/store-products');
@@ -111,16 +165,6 @@ export function StoreProductsPanel({ showTabs = true, showHeading = true }: { sh
             });
     }, []);
 
-    const addProduct = async () => {
-        setError('');
-        const { ok, data } = await apiFetch('/api/store-products', { name: '', price: 0 });
-        if (!ok) {
-            setError((data.error as string) || 'Could not add product');
-            return;
-        }
-        if (data.product) setProducts([...products, data.product as Product]);
-    };
-
     const updateProduct = async (id: number, updates: Partial<Product>) => {
         const updated = { ...products.find((p) => p.id === id), ...updates } as Product;
         setProducts(products.map((p) => (p.id === id ? updated : p)));
@@ -130,6 +174,7 @@ export function StoreProductsPanel({ showTabs = true, showHeading = true }: { sh
                 name: updated.name,
                 description: updated.description,
                 imageUrl: updated.image_url,
+                link: updated.link,
                 price: updated.price,
                 discountPrice: updated.discount_price,
                 category: updated.category,
@@ -171,7 +216,7 @@ export function StoreProductsPanel({ showTabs = true, showHeading = true }: { sh
                     </div>
                 )}
                 {isPro ? (
-                    <button onClick={addProduct} className="bg-[#000000] text-white px-4 py-2 rounded-full font-semibold flex items-center gap-2 hover:bg-[#000000]/90 whitespace-nowrap ml-auto">
+                    <button onClick={() => setShowAddModal(true)} className="bg-[#000000] text-white px-4 py-2 rounded-full font-semibold flex items-center gap-2 hover:bg-[#000000]/90 whitespace-nowrap ml-auto">
                         <Plus size={18} /> Add product
                     </button>
                 ) : (
@@ -226,6 +271,12 @@ export function StoreProductsPanel({ showTabs = true, showHeading = true }: { sh
                                 placeholder="Description"
                                 className="w-full text-sm text-gray-600 outline-none bg-gray-50 rounded-lg p-2"
                             />
+                            <input
+                                value={p.link || ''}
+                                onChange={(e) => updateProduct(p.id, { link: e.target.value || null })}
+                                placeholder="Product link (optional) — where tapping the photo takes visitors"
+                                className="w-full text-sm px-3 py-2 rounded-lg bg-gray-50 outline-none"
+                            />
                             <div className="grid grid-cols-2 gap-2">
                                 <input
                                     type="number"
@@ -272,6 +323,16 @@ export function StoreProductsPanel({ showTabs = true, showHeading = true }: { sh
                         </div>
                     ))}
                 </div>
+            )}
+
+            {showAddModal && (
+                <AddProductModal
+                    onClose={() => setShowAddModal(false)}
+                    onCreated={(p) => {
+                        setProducts([...products, p]);
+                        setShowAddModal(false);
+                    }}
+                />
             )}
         </div>
     );

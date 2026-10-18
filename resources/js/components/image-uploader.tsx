@@ -46,7 +46,7 @@ export function ImageUploader({
 
     return (
         <div>
-            <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleChange} className="hidden" />
+            <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" onChange={handleChange} className="hidden" />
             <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className={`${className} disabled:opacity-60`}>
                 {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                 {uploading ? 'Uploading...' : label}

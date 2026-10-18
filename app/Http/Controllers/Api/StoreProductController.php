@@ -25,12 +25,18 @@ class StoreProductController extends Controller
             return response()->json(['error' => 'Adding products to your shop is a Pro feature. Upgrade to start selling.'], 403);
         }
 
+        $name = trim((string) $request->input('name'));
+        if ($name === '') {
+            return response()->json(['error' => 'Give the product a name.'], 400);
+        }
+
         $lastPosition = StoreProduct::where('profile_id', $profile->id)->max('position');
 
         $product = StoreProduct::create([
-            'name' => $request->input('name') ?: 'New Product',
+            'name' => $name,
             'description' => $request->input('description'),
             'image_url' => $request->input('imageUrl'),
+            'link' => $request->input('link') ?: null,
             'price' => is_numeric($request->input('price')) ? (float) $request->input('price') : 0,
             'discount_price' => $request->input('discountPrice') ? (float) $request->input('discountPrice') : null,
             'category' => $request->input('category'),
@@ -63,6 +69,9 @@ class StoreProductController extends Controller
         }
         if ($request->has('discountPrice')) {
             $updateData['discount_price'] = $request->input('discountPrice') ? (float) $request->input('discountPrice') : null;
+        }
+        if ($request->has('link')) {
+            $updateData['link'] = $request->input('link') ?: null;
         }
 
         $storeProduct->update($updateData);
