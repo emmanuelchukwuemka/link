@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -35,9 +36,14 @@ class OrderController extends Controller
         $city = $request->input('city');
         $address = $request->input('address');
         $deliveryInstructions = $request->input('deliveryInstructions');
+        $deliveryPaymentMethod = $request->input('deliveryPaymentMethod', 'prepaid');
 
         if (! $items || ! is_array($items) || count($items) === 0 || ! $customerName || ! $customerEmail || ! $customerPhone || ! $state || ! $city || ! $address) {
             return response()->json(['error' => 'Missing required fields'], 400);
+        }
+
+        if (! in_array($deliveryPaymentMethod, ['prepaid', 'cash_on_delivery'], true)) {
+            return response()->json(['error' => 'Invalid delivery payment method'], 400);
         }
 
         $productIds = collect($items)->pluck('productId')->unique();
@@ -66,13 +72,18 @@ class OrderController extends Controller
             ];
         }
 
-        // Delivery fees are suspended for now — re-enable the DeliveryZone
-        // lookup here when they come back.
-        $deliveryFee = 0;
+        $zone = DeliveryZone::where('name', $city)->first() ?? DeliveryZone::where('name', 'Other')->first();
+        $deliveryFee = $zone ? (float) $zone->fee : ($subtotal >= 30000 ? 0 : 3500);
         $total = $subtotal + $deliveryFee;
+        // Cash-on-delivery only makes sense when there's actually a fee to defer —
+        // with nothing to collect later it's equivalent to paying everything now.
+        if ($deliveryFee <= 0) {
+            $deliveryPaymentMethod = 'prepaid';
+        }
+        $chargeNow = $deliveryPaymentMethod === 'cash_on_delivery' ? $subtotal : $total;
         $orderNumber = OrderNumberGenerator::generate();
 
-        $order = DB::transaction(function () use ($orderNumber, $request, $customerName, $customerEmail, $customerPhone, $state, $city, $address, $deliveryInstructions, $deliveryFee, $subtotal, $total, $orderItemsData) {
+        $order = DB::transaction(function () use ($orderNumber, $request, $customerName, $customerEmail, $customerPhone, $state, $city, $address, $deliveryInstructions, $deliveryFee, $deliveryPaymentMethod, $subtotal, $total, $orderItemsData) {
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'user_id' => $request->user()?->id,
@@ -84,6 +95,7 @@ class OrderController extends Controller
                 'address' => $address,
                 'delivery_instructions' => $deliveryInstructions,
                 'delivery_fee' => $deliveryFee,
+                'delivery_payment_method' => $deliveryPaymentMethod,
                 'subtotal' => $subtotal,
                 'total' => $total,
             ]);
@@ -102,7 +114,7 @@ class OrderController extends Controller
         try {
             $tx = $paystack->initializeTransaction(
                 $customerEmail,
-                $total,
+                $chargeNow,
                 $orderNumber,
                 config('app.url').'/api/payments/verify',
             );
@@ -112,7 +124,7 @@ class OrderController extends Controller
             return response()->json(['error' => 'Internal server error'], 500);
         }
 
-        Payment::create(['order_id' => $order->id, 'reference' => $orderNumber, 'amount' => $total, 'status' => 'pending']);
+        Payment::create(['order_id' => $order->id, 'reference' => $orderNumber, 'amount' => $chargeNow, 'status' => 'pending']);
 
         $orderWithItems = $order->load('items.product');
 

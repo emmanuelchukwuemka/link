@@ -18,6 +18,7 @@ export default function CheckoutPage() {
         address: '',
         deliveryInstructions: '',
     });
+    const [deliveryPaymentMethod, setDeliveryPaymentMethod] = useState<'prepaid' | 'cash_on_delivery'>('prepaid');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -44,9 +45,10 @@ export default function CheckoutPage() {
     }, []);
 
     const subtotal = cartTotal(items);
-    // Delivery fees are suspended for now - re-enable the zone-based lookup
-    // here (and the "Delivery" line below) when they come back.
-    const total = subtotal;
+    const zone = zones.find((z) => z.name.toLowerCase() === form.city.trim().toLowerCase());
+    const deliveryFee = zone?.fee ?? zones.find((z) => z.name === 'Other')?.fee ?? 0;
+    const total = subtotal + deliveryFee;
+    const chargeNow = deliveryPaymentMethod === 'cash_on_delivery' ? subtotal : total;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,6 +66,7 @@ export default function CheckoutPage() {
                     customizationFileUrl: i.customizationFileUrl,
                 })),
                 ...form,
+                deliveryPaymentMethod: deliveryFee > 0 ? deliveryPaymentMethod : 'prepaid',
             });
             if (!ok) throw new Error((data.error as string) || 'Could not place order');
 
@@ -153,8 +156,36 @@ export default function CheckoutPage() {
                             className="w-full px-4 py-3 rounded-lg bg-[#E8E5E0] outline-none min-h-[60px]"
                         />
 
+                        {deliveryFee > 0 && (
+                            <div>
+                                <p className="text-sm font-semibold text-[#181818] mb-2">How do you want to pay?</p>
+                                <div className="space-y-2">
+                                    <label className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg border cursor-pointer ${deliveryPaymentMethod === 'prepaid' ? 'border-[#181818] bg-[#E8E5E0]' : 'border-[#D4D0C9]'}`}>
+                                        <span className="flex items-center gap-3">
+                                            <input type="radio" name="deliveryPaymentMethod" checked={deliveryPaymentMethod === 'prepaid'} onChange={() => setDeliveryPaymentMethod('prepaid')} className="accent-[#181818]" />
+                                            <span className="text-sm">
+                                                Pay product + delivery now
+                                                <span className="block text-xs text-[#66635F]">One payment, nothing to pay on arrival.</span>
+                                            </span>
+                                        </span>
+                                        <span className="font-semibold text-sm whitespace-nowrap">&#8358;{total.toLocaleString()}</span>
+                                    </label>
+                                    <label className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg border cursor-pointer ${deliveryPaymentMethod === 'cash_on_delivery' ? 'border-[#181818] bg-[#E8E5E0]' : 'border-[#D4D0C9]'}`}>
+                                        <span className="flex items-center gap-3">
+                                            <input type="radio" name="deliveryPaymentMethod" checked={deliveryPaymentMethod === 'cash_on_delivery'} onChange={() => setDeliveryPaymentMethod('cash_on_delivery')} className="accent-[#181818]" />
+                                            <span className="text-sm">
+                                                Pay for the product only now
+                                                <span className="block text-xs text-[#66635F]">Pay &#8358;{deliveryFee.toLocaleString()} delivery fee in cash when it arrives.</span>
+                                            </span>
+                                        </span>
+                                        <span className="font-semibold text-sm whitespace-nowrap">&#8358;{subtotal.toLocaleString()}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
                         <button type="submit" disabled={loading} className="w-full bg-[#181818] text-white py-4 rounded-full font-semibold text-lg hover:bg-[#181818]/90 disabled:opacity-60">
-                            {loading ? 'Placing order...' : `Pay ₦${total.toLocaleString()}`}
+                            {loading ? 'Placing order...' : `Pay ₦${chargeNow.toLocaleString()}`}
                         </button>
                     </form>
 
@@ -170,12 +201,24 @@ export default function CheckoutPage() {
                         ))}
                         <div className="border-t border-[#D4D0C9] pt-3 flex justify-between text-sm">
                             <span className="text-[#66635F]">Delivery</span>
-                            <span className="font-medium text-green-600">Free</span>
+                            <span className={`font-medium ${deliveryFee === 0 ? 'text-green-600' : ''}`}>{deliveryFee === 0 ? 'Free' : `₦${deliveryFee.toLocaleString()}`}</span>
                         </div>
                         <div className="flex justify-between font-bold text-lg pt-2 border-t border-[#D4D0C9]">
                             <span>Total</span>
                             <span>&#8358;{total.toLocaleString()}</span>
                         </div>
+                        {deliveryFee > 0 && deliveryPaymentMethod === 'cash_on_delivery' && (
+                            <div className="text-xs text-[#66635F] space-y-0.5 pt-1">
+                                <div className="flex justify-between">
+                                    <span>Pay now</span>
+                                    <span className="font-semibold">&#8358;{subtotal.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Due on delivery (cash)</span>
+                                    <span className="font-semibold">&#8358;{deliveryFee.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

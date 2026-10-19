@@ -29,6 +29,8 @@ type Order = {
     total: number;
     subtotal: number;
     delivery_fee: number;
+    delivery_payment_method: string;
+    delivery_fee_collected_at: string | null;
     profile_setup_required: boolean;
     courier_name: string | null;
     tracking_number: string | null;
@@ -77,8 +79,22 @@ const STATUS_COLORS: Record<string, string> = {
 const PAGE_SIZE = 10;
 
 function toCsv(orders: Order[]): string {
-    const header = ['Order Number', 'Customer', 'Email', 'Phone', 'Total', 'Payment Status', 'Order Status', 'Courier', 'Tracking Number', 'Created At'];
-    const rows = orders.map((o) => [o.order_number, o.customer_name, o.customer_email, o.customer_phone, o.total.toString(), o.payment_status, o.status, o.courier_name || '', o.tracking_number || '', new Date(o.created_at).toISOString()]);
+    const header = ['Order Number', 'Customer', 'Email', 'Phone', 'Total', 'Payment Status', 'Delivery Fee', 'Delivery Payment', 'Delivery Fee Collected', 'Order Status', 'Courier', 'Tracking Number', 'Created At'];
+    const rows = orders.map((o) => [
+        o.order_number,
+        o.customer_name,
+        o.customer_email,
+        o.customer_phone,
+        o.total.toString(),
+        o.payment_status,
+        o.delivery_fee.toString(),
+        o.delivery_payment_method === 'cash_on_delivery' ? 'Cash on delivery' : 'Prepaid',
+        o.delivery_payment_method === 'cash_on_delivery' ? (o.delivery_fee_collected_at ? 'Yes' : 'No') : '',
+        o.status,
+        o.courier_name || '',
+        o.tracking_number || '',
+        new Date(o.created_at).toISOString(),
+    ]);
     return [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
 }
 
@@ -96,20 +112,29 @@ function OrderDetailModal({ order, onClose, onSaved, onDelete }: { order: Order;
     const [status, setStatus] = useState(order.status);
     const [courierName, setCourierName] = useState(order.courier_name || '');
     const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '');
+    const [deliveryPaymentMethod, setDeliveryPaymentMethod] = useState(order.delivery_payment_method);
+    const [deliveryFeeCollected, setDeliveryFeeCollected] = useState(!!order.delivery_fee_collected_at);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
 
     const handleSave = async () => {
         setSaving(true);
         setError('');
-        const { ok, data } = await apiFetch(`/api/admin/orders/${order.order_number}`, { status, courierName, trackingNumber }, 'PATCH');
+        const { ok, data } = await apiFetch(`/api/admin/orders/${order.order_number}`, { status, courierName, trackingNumber, deliveryPaymentMethod, deliveryFeeCollected }, 'PATCH');
         setSaving(false);
         if (!ok) {
             setError((data.error as string) || 'Could not update order');
             return;
         }
         const updated = data.order as Order;
-        onSaved({ ...order, status: updated.status, courier_name: updated.courier_name, tracking_number: updated.tracking_number });
+        onSaved({
+            ...order,
+            status: updated.status,
+            courier_name: updated.courier_name,
+            tracking_number: updated.tracking_number,
+            delivery_payment_method: updated.delivery_payment_method,
+            delivery_fee_collected_at: updated.delivery_fee_collected_at,
+        });
         onClose();
     };
 
@@ -177,6 +202,25 @@ function OrderDetailModal({ order, onClose, onSaved, onDelete }: { order: Order;
                             <p className="text-xs text-gray-600">Total</p>
                             <p className="font-semibold text-black">₦{order.total.toLocaleString()}</p>
                         </div>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-black mb-1.5">Delivery Fee Payment</label>
+                            <select value={deliveryPaymentMethod} onChange={(e) => setDeliveryPaymentMethod(e.target.value)} className="w-full text-sm px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-black">
+                                <option value="prepaid">Prepaid online</option>
+                                <option value="cash_on_delivery">Cash on delivery</option>
+                            </select>
+                        </div>
+                        {deliveryPaymentMethod === 'cash_on_delivery' && order.delivery_fee > 0 && (
+                            <div>
+                                <label className="block text-xs font-semibold text-black mb-1.5">₦{order.delivery_fee.toLocaleString()} delivery fee</label>
+                                <label className="flex items-center gap-2 text-sm text-black bg-gray-100 rounded-lg px-3 py-2.5 cursor-pointer">
+                                    <input type="checkbox" checked={deliveryFeeCollected} onChange={(e) => setDeliveryFeeCollected(e.target.checked)} className="w-4 h-4 rounded accent-black" />
+                                    Collected from customer
+                                </label>
+                            </div>
+                        )}
                     </div>
 
                     {order.payments.length > 0 && (
@@ -430,6 +474,11 @@ function AdminOrdersInner() {
                                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${o.payment_status === 'paid' ? 'bg-green-100 text-green-700' : o.payment_status === 'failed' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-700'}`}>
                                                 {o.payment_status}
                                             </span>
+                                            {o.delivery_payment_method === 'cash_on_delivery' && o.delivery_fee > 0 && (
+                                                <span className={`ml-1.5 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${o.delivery_fee_collected_at ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {o.delivery_fee_collected_at ? 'COD collected' : `COD ₦${o.delivery_fee.toLocaleString()} due`}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="p-4">
                                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize whitespace-nowrap ${STATUS_COLORS[o.status]}`}>{o.status.replace(/_/g, ' ')}</span>

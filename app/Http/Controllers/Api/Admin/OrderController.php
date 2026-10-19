@@ -62,6 +62,17 @@ class OrderController extends Controller
             $data['tracking_number'] = $request->input('trackingNumber');
         }
 
+        if ($request->has('deliveryPaymentMethod')) {
+            $method = $request->input('deliveryPaymentMethod');
+            if (! in_array($method, ['prepaid', 'cash_on_delivery'], true)) {
+                return response()->json(['error' => 'Invalid delivery payment method'], 400);
+            }
+            $data['delivery_payment_method'] = $method;
+        }
+        if ($request->has('deliveryFeeCollected')) {
+            $data['delivery_fee_collected_at'] = $request->boolean('deliveryFeeCollected') ? now() : null;
+        }
+
         $order->update($data);
 
         if ($status !== null && $order->user_id) {

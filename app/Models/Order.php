@@ -10,9 +10,10 @@ class Order extends Model
 {
     protected $fillable = [
         'order_number', 'user_id', 'customer_name', 'customer_email', 'customer_phone',
-        'state', 'city', 'address', 'delivery_instructions', 'delivery_fee', 'subtotal',
-        'total', 'status', 'payment_status', 'profile_setup_required', 'courier_name',
-        'tracking_number', 'shipped_at', 'delivered_at',
+        'state', 'city', 'address', 'delivery_instructions', 'delivery_fee',
+        'delivery_payment_method', 'subtotal', 'total', 'status', 'payment_status',
+        'profile_setup_required', 'courier_name', 'tracking_number', 'shipped_at',
+        'delivered_at', 'delivery_fee_collected_at',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class Order extends Model
             'profile_setup_required' => 'boolean',
             'shipped_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'delivery_fee_collected_at' => 'datetime',
         ];
     }
 

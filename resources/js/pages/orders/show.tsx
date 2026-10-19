@@ -20,6 +20,8 @@ type OrderData = {
     profile_setup_required: boolean;
     total: number;
     delivery_fee: number;
+    delivery_payment_method: string;
+    delivery_fee_collected_at: string | null;
     subtotal: number;
     courier_name: string | null;
     tracking_number: string | null;
@@ -98,6 +100,12 @@ export default function OrderTrackingPage({ orderNumber }: { orderNumber: string
                         </div>
                     )}
 
+                    {order.payment_status === 'paid' && order.delivery_payment_method === 'cash_on_delivery' && !order.delivery_fee_collected_at && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-800 text-sm">
+                            Have &#8358;{order.delivery_fee.toLocaleString()} ready in cash for the courier &mdash; the delivery fee wasn&apos;t included in your online payment.
+                        </div>
+                    )}
+
                     {order.payment_status === 'paid' && order.profile_setup_required && (
                         <div className="bg-black text-white rounded-2xl p-6">
                             <h2 className="font-bold text-lg mb-1">Set up your TapConnect profile</h2>
@@ -159,7 +167,7 @@ export default function OrderTrackingPage({ orderNumber }: { orderNumber: string
                                 </div>
                             ))}
                             <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
-                                <span className="text-gray-600">Delivery</span>
+                                <span className="text-gray-600">Delivery {order.delivery_payment_method === 'cash_on_delivery' ? '(cash on arrival)' : ''}</span>
                                 <span className="font-medium">&#8358;{order.delivery_fee.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between font-bold pt-2 border-t border-gray-100">
