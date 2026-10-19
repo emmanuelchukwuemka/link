@@ -27,7 +27,7 @@ type Payment = {
     user: { username: string } | null;
     business: { name: string } | null;
 };
-type PickerUser = { id: number; username: string; displayName: string | null; email: string; plan: string };
+type PickerUser = { id: number; profileId: number | null; username: string; displayName: string | null; email: string; plan: string };
 type PickerBusiness = { id: number; name: string; plan: string };
 
 type Tab = 'individual' | 'business' | 'history';
@@ -96,11 +96,13 @@ function GrantModal({ mode, individuals, businesses, onClose, onGranted }: { mod
                         <select required value={targetId} onChange={(e) => setTargetId(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-gray-100 outline-none text-sm text-black">
                             <option value="">Select...</option>
                             {mode === 'individual'
-                                ? individuals.map((u) => (
-                                      <option key={u.id} value={u.id}>
-                                          {u.displayName || u.username} ({u.email}){u.plan === 'pro' ? ' — already Pro' : ''}
-                                      </option>
-                                  ))
+                                ? individuals
+                                      .filter((u) => u.profileId !== null)
+                                      .map((u) => (
+                                          <option key={u.id} value={u.profileId!}>
+                                              {u.displayName || u.username} ({u.email}){u.plan === 'pro' ? ' — already Pro' : ''}
+                                          </option>
+                                      ))
                                 : businesses.map((b) => (
                                       <option key={b.id} value={b.id}>
                                           {b.name}

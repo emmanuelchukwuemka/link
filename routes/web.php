@@ -415,7 +415,7 @@ Route::middleware(['auth', 'admin_api'])->prefix('api/admin')->group(function ()
     Route::get('businesses/{businessId}/employees', [AdminBusinessEmployeeController::class, 'index']);
 
     Route::get('subscriptions', [AdminSubscriptionController::class, 'index']);
-    Route::patch('subscriptions/individual/{userId}', [AdminSubscriptionController::class, 'updateIndividual']);
+    Route::patch('subscriptions/individual/{profileId}', [AdminSubscriptionController::class, 'updateIndividual']);
     Route::patch('subscriptions/business/{businessId}', [AdminSubscriptionController::class, 'updateBusiness']);
 
     Route::get('leads', [AdminLeadController::class, 'index']);

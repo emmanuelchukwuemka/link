@@ -34,6 +34,7 @@ class UserController extends Controller
 
             return [
                 'id' => $u->id,
+                'profileId' => $profile?->id,
                 'username' => $profile?->username,
                 'email' => $u->email,
                 'displayName' => $profile?->name ?? $u->name,
