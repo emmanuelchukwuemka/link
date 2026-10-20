@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\Business;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,11 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete the user's account.
+     * Delete the user's account. Mirrors the business-ownership guard in
+     * Api\ProfileController::destroyAccount() (the account's real delete
+     * flow at /dashboard/settings) - without it, deleting an account that
+     * owns a business throws a raw FK constraint violation, since
+     * businesses.owner_id is restrictOnDelete.
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -50,6 +55,10 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        if (Business::where('owner_id', $user->id)->exists()) {
+            return back()->withErrors(['password' => 'You own a business account. Transfer or delete the business first before deleting your account.']);
+        }
 
         Auth::logout();
 
