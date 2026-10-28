@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
-import { Mail, Check, CreditCard, Store, BarChart3, Sparkles, ArrowLeft, KeyRound, User as UserIcon, AtSign } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Check, CreditCard, Store, BarChart3, Sparkles, ArrowLeft, KeyRound, User as UserIcon, AtSign } from 'lucide-react';
 import { AuthHero } from '@/components/auth-hero';
 import { apiFetch } from '@/lib/api';
 
@@ -19,10 +19,14 @@ export default function Register() {
     const next = params.get('next');
     const isBusiness = params.get('type') === 'business';
 
+    const [mode, setMode] = useState<'otp' | 'password'>('otp');
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
     const [email, setEmail] = useState('');
     const [businessName, setBusinessName] = useState('');
     const [code, setCode] = useState('');
+    const [password, setPassword] = useState('');
+    const [passwordConfirmation, setPasswordConfirmation] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -100,6 +104,47 @@ export default function Register() {
         }
     };
 
+    const switchMode = (newMode: 'otp' | 'password') => {
+        setMode(newMode);
+        setError('');
+        setCode('');
+    };
+
+    const handlePasswordRegisterSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        if (isBusiness && !businessName.trim()) {
+            setError('Please enter your business name.');
+            return;
+        }
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters.');
+            return;
+        }
+        if (password !== passwordConfirmation) {
+            setError('Passwords do not match.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const { ok, data } = await apiFetch('/register', {
+                email: email.trim(),
+                password,
+                password_confirmation: passwordConfirmation,
+                business_name: isBusiness ? businessName.trim() : undefined,
+            });
+            if (!ok) throw new Error((data.error as string) || 'Could not create account');
+
+            const user = data.user as { username: string };
+            setUsername(user.username);
+            setStep(3);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleUsernameSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -153,7 +198,7 @@ export default function Register() {
 
                     {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-6 text-sm">{error}</div>}
 
-                    {step === 1 && (
+                    {step === 1 && mode === 'otp' && (
                         <>
                             <h1 className="text-3xl font-bold mb-1 text-black">{isBusiness ? 'Create Your Business Account' : 'Create Your Account'}</h1>
                             <p className="text-gray-500 mb-8">Enter your email and we&apos;ll send you a verification code &mdash; no long form, no password to remember yet.</p>
@@ -197,6 +242,12 @@ export default function Register() {
                                 </button>
                             </form>
 
+                            <p className="text-center text-sm text-gray-500 mt-6">
+                                <button type="button" onClick={() => switchMode('password')} className="font-semibold text-black hover:underline">
+                                    Sign up with a password instead
+                                </button>
+                            </p>
+
                             {!isBusiness && (
                                 <>
                                     <div className="flex items-center gap-3 text-xs text-gray-400 my-6">
@@ -225,6 +276,93 @@ export default function Register() {
                                     </a>
                                 </>
                             )}
+                        </>
+                    )}
+
+                    {step === 1 && mode === 'password' && (
+                        <>
+                            <h1 className="text-3xl font-bold mb-1 text-black">{isBusiness ? 'Create Your Business Account' : 'Create Your Account'}</h1>
+                            <p className="text-gray-500 mb-8">Set a password now instead of waiting on an email code.</p>
+
+                            <form onSubmit={handlePasswordRegisterSubmit} className="space-y-4">
+                                {isBusiness && (
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5 text-black">
+                                            <Store size={14} /> Business Name
+                                        </label>
+                                        <input
+                                            required
+                                            value={businessName}
+                                            onChange={(e) => setBusinessName(e.target.value)}
+                                            placeholder="Your company name"
+                                            className="w-full px-4 py-3 rounded-lg bg-gray-100 border-transparent focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 outline-none transition-all"
+                                        />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5 text-black">
+                                        <Mail size={14} /> Email Address
+                                    </label>
+                                    <input
+                                        required
+                                        type="email"
+                                        autoFocus
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="you@example.com"
+                                        className="w-full px-4 py-3 rounded-lg bg-gray-100 border-transparent focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5 text-black">
+                                        <Lock size={14} /> Password
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            required
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            placeholder="At least 8 characters"
+                                            className="w-full px-4 py-3 rounded-lg bg-gray-100 border-transparent focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 outline-none transition-all pr-11"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold mb-1.5 flex items-center gap-1.5 text-black">
+                                        <Lock size={14} /> Confirm Password
+                                    </label>
+                                    <input
+                                        required
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={passwordConfirmation}
+                                        onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                        placeholder="Re-enter your password"
+                                        className="w-full px-4 py-3 rounded-lg bg-gray-100 border-transparent focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 outline-none transition-all"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-black text-white rounded-full py-4 font-semibold text-lg hover:bg-[#111111] transition-colors disabled:opacity-60"
+                                >
+                                    {loading ? 'Creating account...' : 'Create account →'}
+                                </button>
+                            </form>
+
+                            <p className="text-center text-sm text-gray-500 mt-6">
+                                <button type="button" onClick={() => switchMode('otp')} className="font-semibold text-black hover:underline">
+                                    Sign up with a code instead
+                                </button>
+                            </p>
                         </>
                     )}
 

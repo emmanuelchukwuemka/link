@@ -3,49 +3,62 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Profile;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Http\RedirectResponse;
+use App\Services\AccountRegistrar;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 
 class RegisteredUserController extends Controller
 {
     /**
-     * Raw registration endpoint — kept for parity with the old app's own
-     * /api/auth/register route, which likewise exists but is never called by
-     * the real register page (that's the OTP wizard, see OtpController).
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * Plain email+password signup — the other way to create an account,
+     * alongside the OTP wizard and Google (see OtpController/GoogleController).
+     * Mirrors OTP registration's contract (auto-generated username claimed
+     * in a later step, optional business_name) so register.tsx's password
+     * mode can reuse the same post-signup flow. Unlike OTP/Google, nothing
+     * here proves the email is real, so email_verified_at stays null.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => ['required', 'string', 'regex:/^[a-z0-9][a-z0-9-]{2,29}$/', 'unique:profiles,username'],
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $email = Str::lower(trim((string) $request->input('email')));
+        $password = (string) $request->input('password');
+        $passwordConfirmation = (string) $request->input('password_confirmation');
+        $businessName = trim((string) $request->input('business_name', ''));
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['error' => 'Please enter a valid email address.'], 400);
+        }
 
-        Profile::create([
-            'user_id' => $user->id,
-            'username' => $request->username,
-            'name' => $request->name,
-        ]);
+        if (User::where('email', $email)->exists()) {
+            return response()->json(['error' => 'An account with this email already exists. Please log in instead.'], 409);
+        }
 
-        event(new Registered($user));
+        if ($password === '' || $password !== $passwordConfirmation) {
+            return response()->json(['error' => 'Passwords do not match.'], 400);
+        }
 
-        Auth::login($user);
+        $validator = Validator::make(['password' => $password], ['password' => Rules\Password::defaults()]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first('password')], 400);
+        }
 
-        return to_route('dashboard');
+        [$user, $profile] = AccountRegistrar::register($email, Hash::make($password), $businessName);
+
+        Auth::login($user, remember: true);
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'username' => $profile->username,
+                'name' => $user->name,
+                'accountType' => $user->account_type,
+            ],
+        ], 201);
     }
 }

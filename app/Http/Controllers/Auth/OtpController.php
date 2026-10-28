@@ -4,15 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\OtpCodeMail;
-use App\Models\Business;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\AccountRegistrar;
 use App\Services\OtpService;
-use App\Services\UsernameGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -73,39 +71,10 @@ class OtpController extends Controller
             return response()->json(['error' => 'An account with this email already exists. Please log in instead.'], 409);
         }
 
-        $username = UsernameGenerator::fromEmail($email);
-
-        [$user, $profile] = DB::transaction(function () use ($email, $username, $businessName) {
-            $name = $businessName !== '' ? $businessName : $username;
-
-            $user = User::create([
-                'email' => $email,
-                // OTP verification proves email ownership, so no password is
-                // collected up front — a random, never-shared hash satisfies
-                // the column's NOT NULL constraint (matches the old app).
-                'password' => Hash::make(Str::random(32)),
-                'name' => $name,
-                'account_type' => $businessName !== '' ? 'business_admin' : 'individual',
-                'email_verified_at' => now(),
-            ]);
-
-            $profile = Profile::create([
-                'user_id' => $user->id,
-                'username' => $username,
-                'name' => $name,
-            ]);
-
-            if ($businessName !== '') {
-                $business = Business::create([
-                    'name' => $businessName,
-                    'slug' => $this->uniqueSlugFor($businessName),
-                    'owner_id' => $user->id,
-                ]);
-                $user->update(['business_id' => $business->id]);
-            }
-
-            return [$user, $profile];
-        });
+        // OTP verification proves email ownership, so no password is
+        // collected up front — a random, never-shared hash satisfies the
+        // column's NOT NULL constraint (matches the old app).
+        [$user, $profile] = AccountRegistrar::register($email, Hash::make(Str::random(32)), $businessName, now());
 
         Auth::login($user, remember: true);
 
@@ -207,18 +176,5 @@ class OtpController extends Controller
         $error = $this->otp->verifyWithError($email, $purpose, $code);
 
         return $error ? response()->json(['error' => $error], 400) : null;
-    }
-
-    private function uniqueSlugFor(string $name): string
-    {
-        $base = Str::slug($name) ?: 'business';
-        $slug = $base;
-        $suffix = 1;
-        while (Business::where('slug', $slug)->exists()) {
-            $slug = "{$base}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
     }
 }

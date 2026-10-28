@@ -13,11 +13,9 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    // The real register page is the OTP wizard (email -> code -> claim
-    // username) — this matches the old app exactly, which never shows a
-    // plain password signup form. RegisteredUserController::store() is kept
-    // as a raw endpoint only, mirroring the old app's own unused-by-the-UI
-    // /api/auth/register route.
+    // register.tsx renders both signup modes: the OTP wizard (email -> code
+    // -> claim username) by default, and a password mode (this endpoint)
+    // that skips the code and goes straight to claiming a username.
     Route::get('register', [OtpController::class, 'createRegister'])
         ->name('register');
 
