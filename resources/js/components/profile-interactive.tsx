@@ -119,8 +119,11 @@ export function SaveContactButton({
     );
 }
 
-export function LeadForm({ username, className }: { username: string; className?: string }) {
-    const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' });
+const DEFAULT_LEAD_FIELDS = ['phone', 'email', 'message'];
+
+export function LeadForm({ username, fields, className }: { username: string; fields?: string[] | null; className?: string }) {
+    const activeFields = fields && fields.length > 0 ? fields : DEFAULT_LEAD_FIELDS;
+    const [form, setForm] = useState({ name: '', phone: '', email: '', social: '', message: '' });
     const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -158,25 +161,39 @@ export function LeadForm({ username, className }: { username: string; className?
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none"
             />
-            <input
-                placeholder="Phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none"
-            />
-            <input
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none"
-            />
-            <textarea
-                placeholder="Message"
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none min-h-[80px]"
-            />
+            {activeFields.includes('phone') && (
+                <input
+                    placeholder="Phone"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none"
+                />
+            )}
+            {activeFields.includes('email') && (
+                <input
+                    type="email"
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none"
+                />
+            )}
+            {activeFields.includes('social') && (
+                <input
+                    placeholder="Instagram, TikTok or other social handle"
+                    value={form.social}
+                    onChange={(e) => setForm({ ...form, social: e.target.value })}
+                    className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none"
+                />
+            )}
+            {activeFields.includes('message') && (
+                <textarea
+                    placeholder="Message"
+                    value={form.message}
+                    onChange={(e) => setForm({ ...form, message: e.target.value })}
+                    className="w-full px-4 py-3 rounded-lg bg-white/90 text-black outline-none min-h-[80px]"
+                />
+            )}
             <button
                 type="submit"
                 disabled={status === 'sending'}

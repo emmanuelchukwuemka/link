@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageSquareText, Phone, Mail } from 'lucide-react';
+import { MessageSquareText, Phone, Mail, AtSign, Download } from 'lucide-react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { apiFetch } from '@/lib/api';
 
@@ -8,10 +8,25 @@ type LeadData = {
     name: string;
     phone: string | null;
     email: string | null;
+    social: string | null;
     message: string | null;
     status: string;
     created_at: string;
 };
+
+function saveLeadContact(lead: LeadData) {
+    const lines = ['BEGIN:VCARD', 'VERSION:3.0', `FN:${lead.name}`, lead.phone ? `TEL;TYPE=CELL:${lead.phone}` : '', lead.email ? `EMAIL:${lead.email}` : '', 'END:VCARD'].filter(Boolean);
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/vcard' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${lead.name}.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
 
 const STATUSES = ['new', 'contacted', 'interested', 'converted', 'lost'];
 const STATUS_COLORS: Record<string, string> = {
@@ -62,7 +77,7 @@ function LeadsInner() {
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="font-semibold">{lead.name}</p>
-                                    <div className="flex gap-3 text-xs text-black mt-1">
+                                    <div className="flex flex-wrap gap-3 text-xs text-black mt-1">
                                         {lead.phone && (
                                             <span className="flex items-center gap-1">
                                                 <Phone size={12} /> {lead.phone}
@@ -73,9 +88,21 @@ function LeadsInner() {
                                                 <Mail size={12} /> {lead.email}
                                             </span>
                                         )}
+                                        {lead.social && (
+                                            <span className="flex items-center gap-1">
+                                                <AtSign size={12} /> {lead.social}
+                                            </span>
+                                        )}
                                     </div>
                                     {lead.message && <p className="text-sm text-gray-600 mt-2">{lead.message}</p>}
-                                    <p className="text-xs text-black mt-2">{new Date(lead.created_at).toLocaleString()}</p>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <p className="text-xs text-black">{new Date(lead.created_at).toLocaleString()}</p>
+                                        {(lead.phone || lead.email) && (
+                                            <button onClick={() => saveLeadContact(lead)} className="flex items-center gap-1 text-xs font-semibold text-black hover:underline">
+                                                <Download size={12} /> Save contact
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <select
                                     value={lead.status}

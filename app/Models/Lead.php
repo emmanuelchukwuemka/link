@@ -9,7 +9,7 @@ class Lead extends Model
 {
     const UPDATED_AT = null;
 
-    protected $fillable = ['owner_id', 'profile_id', 'name', 'phone', 'email', 'message', 'notes', 'source', 'status'];
+    protected $fillable = ['owner_id', 'profile_id', 'name', 'phone', 'email', 'social', 'message', 'notes', 'source', 'status'];
 
     public function owner(): BelongsTo
     {

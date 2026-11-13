@@ -3,6 +3,13 @@ import { Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { apiFetch } from '@/lib/api';
 
+const LEAD_FIELD_OPTIONS = [
+    { key: 'phone', label: 'Phone number' },
+    { key: 'email', label: 'Email address' },
+    { key: 'social', label: 'Social handle' },
+    { key: 'message', label: 'Message box' },
+];
+
 function DeleteAccountModal({ onClose }: { onClose: () => void }) {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -66,6 +73,9 @@ function SettingsInner() {
         address: '',
         businessHours: '',
         leadFormEnabled: false,
+        leadFormHeading: '',
+        leadFormSubtext: '',
+        leadFormFields: ['phone', 'email', 'message'] as string[],
     });
     const [showDelete, setShowDelete] = useState(false);
 
@@ -86,6 +96,9 @@ function SettingsInner() {
                         address: data.user.address || '',
                         businessHours: data.user.business_hours || '',
                         leadFormEnabled: !!data.user.lead_form_enabled,
+                        leadFormHeading: data.user.lead_form_heading || '',
+                        leadFormSubtext: data.user.lead_form_subtext || '',
+                        leadFormFields: data.user.lead_form_fields ? data.user.lead_form_fields.split(',') : ['phone', 'email', 'message'],
                     });
                 }
             });
@@ -98,6 +111,12 @@ function SettingsInner() {
         } catch (err) {
             console.error(err);
         }
+    };
+
+    const toggleLeadField = (field: string) => {
+        const next = profile.leadFormFields.includes(field) ? profile.leadFormFields.filter((f) => f !== field) : [...profile.leadFormFields, field];
+        setProfile({ ...profile, leadFormFields: next });
+        apiFetch('/api/profile', { leadFormFields: next.join(',') }, 'PUT').catch((err) => console.error(err));
     };
 
     return (
@@ -187,17 +206,60 @@ function SettingsInner() {
                         className="w-full px-4 py-3 rounded-lg bg-gray-100 border-transparent focus:bg-white focus:border-[#000000] focus:ring-2 focus:ring-[#000000]/20 outline-none transition-all min-h-[80px]"
                     />
                 </div>
-                <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                    <div>
-                        <p className="font-semibold text-sm">Lead capture form</p>
-                        <p className="text-xs text-black">Let visitors send you their name, phone and a message.</p>
+                <div className="bg-gray-50 rounded-lg px-4 py-3 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-semibold text-sm">Lead capture form</p>
+                            <p className="text-xs text-black">Let visitors send you their name and whatever details you choose below.</p>
+                        </div>
+                        <button
+                            onClick={() => handleUpdate({ leadFormEnabled: !profile.leadFormEnabled })}
+                            className={`w-12 h-6 rounded-full relative shrink-0 transition-colors ${profile.leadFormEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                        >
+                            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${profile.leadFormEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => handleUpdate({ leadFormEnabled: !profile.leadFormEnabled })}
-                        className={`w-12 h-6 rounded-full relative transition-colors ${profile.leadFormEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
-                    >
-                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${profile.leadFormEnabled ? 'left-[26px]' : 'left-0.5'}`} />
-                    </button>
+
+                    {profile.leadFormEnabled && (
+                        <div className="space-y-4 pt-1">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Heading</label>
+                                <input
+                                    type="text"
+                                    value={profile.leadFormHeading}
+                                    onChange={(e) => handleUpdate({ leadFormHeading: e.target.value })}
+                                    placeholder="Interested in working together?"
+                                    className="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-black outline-none transition-all text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Subtext</label>
+                                <input
+                                    type="text"
+                                    value={profile.leadFormSubtext}
+                                    onChange={(e) => handleUpdate({ leadFormSubtext: e.target.value })}
+                                    placeholder={`Send a message and ${profile.username || 'I'} will get back to you.`}
+                                    className="w-full px-3 py-2.5 rounded-lg bg-white border border-gray-200 focus:border-black outline-none transition-all text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-2">What to collect (besides their name)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {LEAD_FIELD_OPTIONS.map((opt) => (
+                                        <label key={opt.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-white border border-gray-200 rounded-lg px-3 py-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={profile.leadFormFields.includes(opt.key)}
+                                                onChange={() => toggleLeadField(opt.key)}
+                                                className="accent-black w-4 h-4 rounded"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

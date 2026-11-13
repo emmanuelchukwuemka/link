@@ -60,6 +60,7 @@ class LeadController extends Controller
             'name' => substr((string) $name, 0, 200),
             'phone' => $request->input('phone') ? substr((string) $request->input('phone'), 0, 50) : null,
             'email' => $request->input('email') ? substr((string) $request->input('email'), 0, 200) : null,
+            'social' => $request->input('social') ? substr((string) $request->input('social'), 0, 200) : null,
             'message' => $request->input('message') ? substr((string) $request->input('message'), 0, 2000) : null,
         ]);
 

@@ -105,6 +105,9 @@ interface ProfileUser {
     address: string | null;
     business_hours: string | null;
     lead_form_enabled: boolean;
+    lead_form_heading: string | null;
+    lead_form_subtext: string | null;
+    lead_form_fields: string | null;
     template: string;
     bg_type: string;
     bg_color: string;
@@ -452,9 +455,9 @@ export default function Profile({
                 {/* Lead capture (Pro feature — locks automatically if the plan lapses) */}
                 {user.lead_form_enabled && isPro && (
                     <section className="w-full max-w-md mt-10 rounded-2xl p-5" style={{ backgroundColor: user.button_color, color: user.button_text_color }}>
-                        <h2 className="font-bold text-lg mb-1">Interested in working together?</h2>
-                        <p className="text-sm opacity-80 mb-4">Send a message and {user.name || user.username} will get back to you.</p>
-                        <LeadForm username={user.username} />
+                        <h2 className="font-bold text-lg mb-1">{user.lead_form_heading || 'Interested in working together?'}</h2>
+                        <p className="text-sm opacity-80 mb-4">{user.lead_form_subtext || `Send a message and ${user.name || user.username} will get back to you.`}</p>
+                        <LeadForm username={user.username} fields={user.lead_form_fields ? user.lead_form_fields.split(',') : null} />
                     </section>
                 )}
 
